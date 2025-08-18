@@ -11,6 +11,7 @@ import type {
   SocketUser,
   SocketMessage,
 } from "./types";
+import { createMockSocket, type MockSocket } from "./constants";
 
 // Initial state
 const initialState: SocketState = {
@@ -114,87 +115,7 @@ const socketReducer = (
   }
 };
 
-// Mock Socket.IO interface for development/testing
-interface MockSocket {
-  connected: boolean;
-  connect: () => void;
-  disconnect: () => void;
-  emit: (event: string, data?: any) => void;
-  on: (event: string, callback: (data?: any) => void) => void;
-  off: (event: string, callback?: (data?: any) => void) => void;
-}
-
-// Create a mock socket for development
-const createMockSocket = (): MockSocket => {
-  const eventListeners: { [key: string]: ((data?: any) => void)[] } = {};
-  let connected = false;
-  let connectTimeout: NodeJS.Timeout | null = null;
-
-  return {
-    connected,
-    connect() {
-      if (connectTimeout) clearTimeout(connectTimeout);
-      connectTimeout = setTimeout(
-        () => {
-          connected = true;
-          this.connected = true;
-          const connectCallbacks = eventListeners["connect"] || [];
-          connectCallbacks.forEach((callback) => callback());
-        },
-        1000 + Math.random() * 2000
-      ); // Simulate connection delay
-    },
-    disconnect() {
-      if (connectTimeout) {
-        clearTimeout(connectTimeout);
-        connectTimeout = null;
-      }
-      connected = false;
-      this.connected = false;
-      const disconnectCallbacks = eventListeners["disconnect"] || [];
-      disconnectCallbacks.forEach((callback) => callback());
-    },
-    emit(event: string, data?: any) {
-      // Simulate server responses for demo purposes
-      if (event === "join-room" && data) {
-        setTimeout(() => {
-          const joinCallbacks = eventListeners["room-joined"] || [];
-          joinCallbacks.forEach((callback) => callback({ room: data.room }));
-        }, 500);
-      }
-      if (event === "send-message" && data) {
-        setTimeout(() => {
-          const messageCallbacks = eventListeners["message"] || [];
-          const mockMessage: SocketMessage = {
-            id: Date.now().toString(),
-            userId: "demo-user",
-            userName: "Demo User",
-            message: data.message,
-            timestamp: Date.now(),
-            type: "text",
-          };
-          messageCallbacks.forEach((callback) => callback(mockMessage));
-        }, 200);
-      }
-    },
-    on(event: string, callback: (data?: any) => void) {
-      if (!eventListeners[event]) {
-        eventListeners[event] = [];
-      }
-      eventListeners[event].push(callback);
-    },
-    off(event: string, callback?: (data?: any) => void) {
-      if (!eventListeners[event]) return;
-      if (callback) {
-        eventListeners[event] = eventListeners[event].filter(
-          (cb) => cb !== callback
-        );
-      } else {
-        delete eventListeners[event];
-      }
-    },
-  };
-};
+// Mock socket is now imported from constants
 
 // Context interface
 interface SocketContextType {
@@ -210,7 +131,7 @@ interface SocketContextType {
   sendMessage: (
     message: string,
     type?: SocketMessage["type"],
-    data?: any
+    data?: unknown
   ) => void;
   clearMessages: () => void;
   // User methods
@@ -302,7 +223,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
       }
     });
 
-    socket.on("error", (error: any) => {
+    socket.on("error", (error: Error) => {
       dispatch({
         type: "SET_ERROR",
         payload: error.message || "Connection error",
@@ -377,7 +298,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
   const sendMessage = (
     message: string,
     type: SocketMessage["type"] = "text",
-    data?: any
+    data?: unknown
   ) => {
     if (socketRef.current && state.connected) {
       socketRef.current.emit("send-message", {
@@ -430,6 +351,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
 };
 
 // Custom hook to use the SocketContext
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = (): SocketContextType => {
   const context = useContext(SocketContext);
   if (context === undefined) {

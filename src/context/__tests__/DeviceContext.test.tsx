@@ -282,8 +282,10 @@ describe("DeviceContext", () => {
 
   it("requests geolocation permission successfully", async () => {
     mockNavigator.geolocation.getCurrentPosition.mockImplementation(
-      (success: any) => {
-        success({ coords: { latitude: 0, longitude: 0 } });
+      (success: (position: GeolocationPosition) => void) => {
+        success({
+          coords: { latitude: 0, longitude: 0 },
+        } as GeolocationPosition);
       }
     );
 
@@ -306,8 +308,11 @@ describe("DeviceContext", () => {
 
   it("handles geolocation permission denial", async () => {
     mockNavigator.geolocation.getCurrentPosition.mockImplementation(
-      (_success: any, error: unknown) => {
-        error({ code: 1 }); // PERMISSION_DENIED
+      (
+        _success: (position: GeolocationPosition) => void,
+        error: (error: GeolocationPositionError) => void
+      ) => {
+        error({ code: 1 } as GeolocationPositionError); // PERMISSION_DENIED
       }
     );
 
@@ -432,9 +437,9 @@ describe("DeviceContext", () => {
     const originalMediaDevices = mockNavigator.mediaDevices;
     const originalGeolocation = mockNavigator.geolocation;
 
-    // @ts-ignore
+    // @ts-expect-error - Intentionally deleting for test
     delete mockNavigator.mediaDevices;
-    // @ts-ignore
+    // @ts-expect-error - Intentionally deleting for test
     delete mockNavigator.geolocation;
 
     render(

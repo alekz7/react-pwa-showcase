@@ -1,12 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import type { AppState, AppAction, UserPreferences } from "./types";
-
-// Initial state
-const initialUserPreferences: UserPreferences = {
-  language: "en",
-  notifications: true,
-  analytics: false,
-};
+import type { AppState, AppAction } from "./types";
+import { initialUserPreferences } from "./constants";
 
 const initialState: AppState = {
   theme: {
@@ -263,6 +257,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 };
 
 // Custom hook to use the AppContext
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = (): AppContextType => {
   const context = useContext(AppContext);
   if (context === undefined) {

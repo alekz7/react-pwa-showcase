@@ -107,7 +107,7 @@ export interface SocketMessage {
   message: string;
   timestamp: number;
   type: "text" | "system" | "location" | "file";
-  data?: any;
+  data?: unknown;
 }
 
 export type SocketAction =

@@ -2,30 +2,26 @@ import React, { createContext, useContext, useReducer, useEffect } from "react";
 import type {
   DeviceState,
   DeviceAction,
-  DeviceCapabilities,
   DevicePermissions,
   PermissionState,
 } from "./types";
+import { detectDeviceCapabilities } from "./constants";
 
-// Initial device capabilities detection
-const detectDeviceCapabilities = (): DeviceCapabilities => {
-  return {
-    camera: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
-    microphone: !!(
-      navigator.mediaDevices && navigator.mediaDevices.getUserMedia
-    ),
-    geolocation: !!navigator.geolocation,
-    deviceMotion: !!(window.DeviceMotionEvent || window.DeviceOrientationEvent),
-    fileSystem: !!(
-      window.File &&
-      window.FileReader &&
-      window.FileList &&
-      window.Blob
-    ),
-    notifications: !!("Notification" in window),
-    serviceWorker: !!("serviceWorker" in navigator),
+// Type definitions for browser APIs not in TypeScript
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    effectiveType?: string;
+    addEventListener: (event: string, callback: () => void) => void;
   };
-};
+  mozConnection?: {
+    effectiveType?: string;
+    addEventListener: (event: string, callback: () => void) => void;
+  };
+  webkitConnection?: {
+    effectiveType?: string;
+    addEventListener: (event: string, callback: () => void) => void;
+  };
+}
 
 // Initial permissions state
 const initialPermissions: DevicePermissions = {
@@ -176,6 +172,7 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
               await navigator.mediaDevices.getUserMedia(constraints);
             stream.getTracks().forEach((track) => track.stop());
             permissionState = "granted";
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
             permissionState = "denied";
           }
@@ -184,7 +181,7 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
         case "geolocation":
           return new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(
-              (_position: GeolocationPosition) => {
+              () => {
                 permissionState = "granted";
                 dispatch({
                   type: "UPDATE_PERMISSION",
@@ -192,8 +189,9 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
                 });
                 resolve(permissionState);
               },
-              (error: GeolocationPositionError) => {
-                permissionState = error.code === 1 ? "denied" : "unknown";
+              (positionError: GeolocationPositionError) => {
+                permissionState =
+                  positionError.code === 1 ? "denied" : "unknown";
                 dispatch({
                   type: "UPDATE_PERMISSION",
                   payload: { permission, state: permissionState },
@@ -239,9 +237,9 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
   // Get battery information
   const getBatteryInfo = async () => {
     try {
-      // @ts-ignore - Battery API is not in TypeScript definitions
+      // @ts-expect-error - Battery API is not in TypeScript definitions
       if ("getBattery" in navigator) {
-        // @ts-ignore
+        // @ts-expect-error - Battery API is not in TypeScript definitions
         const battery = await navigator.getBattery();
         dispatch({ type: "SET_BATTERY_LEVEL", payload: battery.level * 100 });
 
@@ -258,13 +256,13 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
   // Get network information
   const getNetworkInfo = () => {
     try {
-      // @ts-ignore - Network Information API is not in TypeScript definitions
+      // @ts-expect-error - Network Information API is not in TypeScript definitions
       if ("connection" in navigator) {
-        // @ts-ignore
+        // @ts-expect-error - Network Information API is not in TypeScript definitions
         const connection =
-          (navigator as any).connection ||
-          (navigator as any).mozConnection ||
-          (navigator as any).webkitConnection;
+          (navigator as NavigatorWithConnection).connection ||
+          (navigator as NavigatorWithConnection).mozConnection ||
+          (navigator as NavigatorWithConnection).webkitConnection;
         if (connection) {
           dispatch({
             type: "SET_NETWORK_TYPE",
@@ -340,6 +338,7 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
 };
 
 // Custom hook to use the DeviceContext
+// eslint-disable-next-line react-refresh/only-export-components
 export const useDeviceContext = (): DeviceContextType => {
   const context = useContext(DeviceContext);
   if (context === undefined) {
