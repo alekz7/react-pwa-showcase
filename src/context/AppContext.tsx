@@ -62,7 +62,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         },
       };
 
-    case "ADD_NOTIFICATION":
+    case "ADD_NOTIFICATION": {
       const newNotification = {
         ...action.payload,
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -75,6 +75,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           notifications: [...state.ui.notifications, newNotification],
         },
       };
+    }
 
     case "REMOVE_NOTIFICATION":
       return {

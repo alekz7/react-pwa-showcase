@@ -10,7 +10,13 @@ import {
   Button,
   Chip,
   Stack,
+  Alert,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
+import { Refresh, Info } from "@mui/icons-material";
+import { useDeviceContext, useAppContext } from "../context";
+import type { DeviceCapabilities, DevicePermissions } from "../context";
 import {
   CameraAlt,
   Mic,
@@ -26,7 +32,9 @@ interface DemoCard {
   description: string;
   icon: React.ReactElement;
   path: string;
-  status: "supported" | "unsupported" | "partial";
+  capabilityKey: keyof DeviceCapabilities;
+  permissionKey?: keyof DevicePermissions;
+  requirements: string[];
 }
 
 const demoCards: DemoCard[] = [
@@ -35,51 +43,71 @@ const demoCards: DemoCard[] = [
     description: "Capture photos and record videos using device camera",
     icon: <CameraAlt />,
     path: "/camera",
-    status: "supported",
+    capabilityKey: "camera",
+    permissionKey: "camera",
+    requirements: ["MediaDevices API", "getUserMedia()"],
   },
   {
     title: "Microphone",
     description: "Record audio and analyze sound levels in real-time",
     icon: <Mic />,
     path: "/microphone",
-    status: "supported",
+    capabilityKey: "microphone",
+    permissionKey: "microphone",
+    requirements: ["MediaDevices API", "Web Audio API"],
   },
   {
     title: "File System",
     description: "Select, preview, and download files from your device",
     icon: <FolderOpen />,
     path: "/files",
-    status: "supported",
+    capabilityKey: "fileSystem",
+    requirements: ["File API", "FileReader API", "Blob API"],
   },
   {
     title: "Motion Sensors",
     description: "Access accelerometer and gyroscope data",
     icon: <SensorsRounded />,
     path: "/motion",
-    status: "partial",
+    capabilityKey: "deviceMotion",
+    requirements: ["DeviceMotionEvent", "DeviceOrientationEvent"],
   },
   {
     title: "Location Services",
     description: "Get GPS coordinates and track location changes",
     icon: <LocationOn />,
     path: "/location",
-    status: "supported",
+    capabilityKey: "geolocation",
+    permissionKey: "geolocation",
+    requirements: ["Geolocation API"],
   },
   {
     title: "Real-time Communication",
     description: "WebSocket-based chat and data sharing",
     icon: <Wifi />,
     path: "/realtime",
-    status: "supported",
+    capabilityKey: "serviceWorker", // Using serviceWorker as proxy for web capabilities
+    requirements: ["WebSocket API", "Real-time messaging"],
   },
   {
     title: "PWA Features",
     description: "Installation, offline support, and push notifications",
     icon: <InstallMobile />,
     path: "/pwa",
-    status: "supported",
+    capabilityKey: "serviceWorker",
+    permissionKey: "notifications",
+    requirements: ["Service Worker", "Web App Manifest", "Cache API"],
   },
 ];
+
+const getStatusFromCapability = (
+  isCapable: boolean,
+  permissionState?: string
+): "supported" | "unsupported" | "partial" => {
+  if (!isCapable) return "unsupported";
+  if (permissionState === "denied") return "partial";
+  return "supported";
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -97,11 +125,11 @@ const getStatusColor = (status: string) => {
 const getStatusText = (status: string) => {
   switch (status) {
     case "supported":
-      return "Supported";
+      return "Fully Supported";
     case "partial":
-      return "Partial Support";
+      return "Limited Support";
     case "unsupported":
-      return "Not Supported";
+      return "Not Available";
     default:
       return "Unknown";
   }
@@ -109,25 +137,91 @@ const getStatusText = (status: string) => {
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { state: deviceState, refreshCapabilities } = useDeviceContext();
+  const { addNotification } = useAppContext();
+
+  const handleRefreshCapabilities = () => {
+    refreshCapabilities();
+    addNotification({
+      type: "info",
+      message: "Device capabilities refreshed",
+      autoHide: true,
+    });
+  };
+
+  const handleDemoClick = (demo: DemoCard) => {
+    const status = getStatusFromCapability(
+      deviceState.capabilities[demo.capabilityKey],
+      demo.permissionKey
+        ? deviceState.permissions[demo.permissionKey]
+        : undefined
+    );
+
+    if (status === "unsupported") {
+      addNotification({
+        type: "warning",
+        message: `${demo.title} is not supported on this device/browser`,
+        autoHide: true,
+      });
+      return;
+    }
+
+    navigate(demo.path);
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box textAlign="center" mb={6}>
-        <Typography variant="h2" component="h1" gutterBottom>
-          React PWA Showcase
-        </Typography>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          gap={2}
+          mb={2}
+        >
+          <Typography variant="h2" component="h1">
+            React PWA Showcase
+          </Typography>
+          <Tooltip title="Refresh device capabilities">
+            <IconButton onClick={handleRefreshCapabilities} color="primary">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Typography variant="h5" color="text.secondary" gutterBottom>
           Explore Modern Web Capabilities
         </Typography>
         <Typography
           variant="body1"
           color="text.secondary"
-          sx={{ maxWidth: 600, mx: "auto" }}
+          sx={{ maxWidth: 600, mx: "auto", mb: 3 }}
         >
           This Progressive Web Application demonstrates various device
           capabilities and modern web APIs. Click on any demo below to explore
           what your browser and device can do.
         </Typography>
+
+        {/* Device Status Overview */}
+        <Alert
+          severity={deviceState.isOnline ? "success" : "warning"}
+          sx={{ mb: 3, maxWidth: 600, mx: "auto" }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <Typography variant="body2">
+              Device Status: {deviceState.isOnline ? "Online" : "Offline"}
+            </Typography>
+            {deviceState.batteryLevel && (
+              <Typography variant="body2">
+                Battery: {Math.round(deviceState.batteryLevel)}%
+              </Typography>
+            )}
+            {deviceState.networkType && (
+              <Typography variant="body2">
+                Network: {deviceState.networkType}
+              </Typography>
+            )}
+          </Box>
+        </Alert>
       </Box>
 
       <Box
@@ -141,64 +235,125 @@ export const Home: React.FC = () => {
           gap: 3,
         }}
       >
-        {demoCards.map((demo) => (
-          <Card
-            key={demo.path}
-            sx={{
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              transition: "transform 0.2s ease-in-out",
-              "&:hover": {
-                transform: "translateY(-4px)",
-              },
-            }}
-          >
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
-                    bgcolor: "primary.main",
-                    color: "primary.contrastText",
-                    mr: 2,
-                  }}
-                >
-                  {demo.icon}
+        {demoCards.map((demo) => {
+          const status = getStatusFromCapability(
+            deviceState.capabilities[demo.capabilityKey],
+            demo.permissionKey
+              ? deviceState.permissions[demo.permissionKey]
+              : undefined
+          );
+
+          return (
+            <Card
+              key={demo.path}
+              sx={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                transition: "transform 0.2s ease-in-out",
+                "&:hover": {
+                  transform: "translateY(-4px)",
+                },
+                opacity: status === "unsupported" ? 0.7 : 1,
+              }}
+            >
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box display="flex" alignItems="center" mb={2}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 48,
+                      height: 48,
+                      borderRadius: 2,
+                      bgcolor:
+                        status === "unsupported" ? "grey.400" : "primary.main",
+                      color: "primary.contrastText",
+                      mr: 2,
+                    }}
+                  >
+                    {demo.icon}
+                  </Box>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Typography variant="h6" component="h3">
+                        {demo.title}
+                      </Typography>
+                      <Tooltip
+                        title={`Requirements: ${demo.requirements.join(", ")}`}
+                      >
+                        <Info fontSize="small" color="action" />
+                      </Tooltip>
+                    </Box>
+                    <Chip
+                      label={getStatusText(status)}
+                      color={
+                        getStatusColor(status) as
+                          | "success"
+                          | "warning"
+                          | "error"
+                          | "default"
+                      }
+                      size="small"
+                    />
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" component="h3">
-                    {demo.title}
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {demo.description}
+                </Typography>
+
+                {/* Permission Status */}
+                {demo.permissionKey && (
+                  <Box mt={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      Permission: {deviceState.permissions[demo.permissionKey]}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Requirements List */}
+                <Box mt={2}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    gutterBottom
+                  >
+                    Requirements:
                   </Typography>
-                  <Chip
-                    label={getStatusText(demo.status)}
-                    color={getStatusColor(demo.status) as any}
-                    size="small"
-                  />
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    {demo.requirements.map((req, index) => (
+                      <Chip
+                        key={index}
+                        label={req}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontSize: "0.7rem", height: 20 }}
+                      />
+                    ))}
+                  </Stack>
                 </Box>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                {demo.description}
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button
-                size="small"
-                variant="contained"
-                fullWidth
-                disabled={demo.status === "unsupported"}
-                onClick={() => navigate(demo.path)}
-              >
-                {demo.status === "unsupported" ? "Not Available" : "Try Demo"}
-              </Button>
-            </CardActions>
-          </Card>
-        ))}
+              </CardContent>
+              <CardActions>
+                <Button
+                  size="small"
+                  variant="contained"
+                  fullWidth
+                  disabled={status === "unsupported"}
+                  onClick={() => handleDemoClick(demo)}
+                >
+                  {status === "unsupported" ? "Not Available" : "Try Demo"}
+                </Button>
+              </CardActions>
+            </Card>
+          );
+        })}
       </Box>
 
       <Box mt={6} textAlign="center">

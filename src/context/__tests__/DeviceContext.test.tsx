@@ -6,7 +6,7 @@ import {
   renderHook,
   waitFor,
 } from "@testing-library/react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DeviceProvider, useDeviceContext } from "../DeviceContext";
 
 // Mock navigator APIs
@@ -306,7 +306,7 @@ describe("DeviceContext", () => {
 
   it("handles geolocation permission denial", async () => {
     mockNavigator.geolocation.getCurrentPosition.mockImplementation(
-      (_success: any, error: any) => {
+      (_success: any, error: unknown) => {
         error({ code: 1 }); // PERMISSION_DENIED
       }
     );
