@@ -223,34 +223,37 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
       }
     });
 
-    socket.on("error", (error: Error) => {
+    socket.on("error", (error) => {
+      const err = error as Error;
       dispatch({
         type: "SET_ERROR",
-        payload: error.message || "Connection error",
+        payload: err.message || "Connection error",
       });
     });
 
-    socket.on("user-joined", (user: SocketUser) => {
-      dispatch({ type: "ADD_USER", payload: user });
+    socket.on("user-joined", (user) => {
+      const usr = user as SocketUser;
+      dispatch({ type: "ADD_USER", payload: usr });
     });
 
-    socket.on("user-left", (userId: string) => {
-      dispatch({ type: "REMOVE_USER", payload: userId });
+    socket.on("user-left", (userId) => {
+      const usrId = userId as string;
+      dispatch({ type: "REMOVE_USER", payload: usrId });
     });
 
-    socket.on(
-      "user-updated",
-      (data: { id: string; updates: Partial<SocketUser> }) => {
-        dispatch({ type: "UPDATE_USER", payload: data });
-      }
-    );
-
-    socket.on("message", (message: SocketMessage) => {
-      dispatch({ type: "ADD_MESSAGE", payload: message });
+    socket.on("user-updated", (data) => {
+      const dt = data as { id: string; updates: Partial<SocketUser> };
+      dispatch({ type: "UPDATE_USER", payload: dt });
     });
 
-    socket.on("room-joined", (data: { room: string }) => {
-      dispatch({ type: "JOIN_ROOM", payload: data.room });
+    socket.on("message", (message) => {
+      const msg = message as SocketMessage;
+      dispatch({ type: "ADD_MESSAGE", payload: msg });
+    });
+
+    socket.on("room-joined", (data) => {
+      const dt = data as { room: string };
+      dispatch({ type: "JOIN_ROOM", payload: dt.room });
     });
 
     return () => {

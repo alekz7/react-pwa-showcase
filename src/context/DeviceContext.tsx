@@ -237,7 +237,6 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
   // Get battery information
   const getBatteryInfo = async () => {
     try {
-      // @ts-expect-error - Battery API is not in TypeScript definitions
       if ("getBattery" in navigator) {
         // @ts-expect-error - Battery API is not in TypeScript definitions
         const battery = await navigator.getBattery();
@@ -256,9 +255,7 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
   // Get network information
   const getNetworkInfo = () => {
     try {
-      // @ts-expect-error - Network Information API is not in TypeScript definitions
       if ("connection" in navigator) {
-        // @ts-expect-error - Network Information API is not in TypeScript definitions
         const connection =
           (navigator as NavigatorWithConnection).connection ||
           (navigator as NavigatorWithConnection).mozConnection ||

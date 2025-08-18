@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import type { AppState, AppAction } from "./types";
+import type { AppState, AppAction, UserPreferences } from "./types";
 import { initialUserPreferences } from "./constants";
 
 const initialState: AppState = {
