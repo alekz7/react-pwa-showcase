@@ -17,6 +17,9 @@
   - Install Material-UI (MUI) v5, React Router v6, and essential dependencies
   - Set up MUI theme configuration with custom colors and typography
   - Configure Vite for GitHub Pages deployment with proper base path
+
+
+
   - _Requirements: 1.1, 9.2_
 
 - [ ] 3. Create Basic App Structure and Routing
