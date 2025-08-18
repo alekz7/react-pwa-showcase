@@ -1,0 +1,441 @@
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useRef,
+} from "react";
+import type {
+  SocketState,
+  SocketAction,
+  SocketUser,
+  SocketMessage,
+} from "./types";
+
+// Initial state
+const initialState: SocketState = {
+  connected: false,
+  connecting: false,
+  error: null,
+  users: [],
+  messages: [],
+  rooms: [],
+  currentRoom: null,
+};
+
+// Reducer function
+const socketReducer = (
+  state: SocketState,
+  action: SocketAction
+): SocketState => {
+  switch (action.type) {
+    case "SET_CONNECTED":
+      return {
+        ...state,
+        connected: action.payload,
+        connecting: false,
+        error: action.payload ? null : state.error,
+      };
+
+    case "SET_CONNECTING":
+      return {
+        ...state,
+        connecting: action.payload,
+        error: action.payload ? null : state.error,
+      };
+
+    case "SET_ERROR":
+      return {
+        ...state,
+        error: action.payload,
+        connecting: false,
+        connected: false,
+      };
+
+    case "ADD_USER":
+      return {
+        ...state,
+        users: [
+          ...state.users.filter((u) => u.id !== action.payload.id),
+          action.payload,
+        ],
+      };
+
+    case "REMOVE_USER":
+      return {
+        ...state,
+        users: state.users.filter((user) => user.id !== action.payload),
+      };
+
+    case "UPDATE_USER":
+      return {
+        ...state,
+        users: state.users.map((user) =>
+          user.id === action.payload.id
+            ? { ...user, ...action.payload.updates }
+            : user
+        ),
+      };
+
+    case "ADD_MESSAGE":
+      return {
+        ...state,
+        messages: [...state.messages, action.payload].slice(-100), // Keep last 100 messages
+      };
+
+    case "CLEAR_MESSAGES":
+      return {
+        ...state,
+        messages: [],
+      };
+
+    case "JOIN_ROOM":
+      return {
+        ...state,
+        currentRoom: action.payload,
+        messages: [], // Clear messages when joining new room
+      };
+
+    case "LEAVE_ROOM":
+      return {
+        ...state,
+        currentRoom: null,
+        messages: [],
+      };
+
+    case "SET_ROOMS":
+      return {
+        ...state,
+        rooms: action.payload,
+      };
+
+    default:
+      return state;
+  }
+};
+
+// Mock Socket.IO interface for development/testing
+interface MockSocket {
+  connected: boolean;
+  connect: () => void;
+  disconnect: () => void;
+  emit: (event: string, data?: any) => void;
+  on: (event: string, callback: (data?: any) => void) => void;
+  off: (event: string, callback?: (data?: any) => void) => void;
+}
+
+// Create a mock socket for development
+const createMockSocket = (): MockSocket => {
+  const eventListeners: { [key: string]: ((data?: any) => void)[] } = {};
+  let connected = false;
+  let connectTimeout: NodeJS.Timeout | null = null;
+
+  return {
+    connected,
+    connect() {
+      if (connectTimeout) clearTimeout(connectTimeout);
+      connectTimeout = setTimeout(
+        () => {
+          connected = true;
+          this.connected = true;
+          const connectCallbacks = eventListeners["connect"] || [];
+          connectCallbacks.forEach((callback) => callback());
+        },
+        1000 + Math.random() * 2000
+      ); // Simulate connection delay
+    },
+    disconnect() {
+      if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+      }
+      connected = false;
+      this.connected = false;
+      const disconnectCallbacks = eventListeners["disconnect"] || [];
+      disconnectCallbacks.forEach((callback) => callback());
+    },
+    emit(event: string, data?: any) {
+      // Simulate server responses for demo purposes
+      if (event === "join-room" && data) {
+        setTimeout(() => {
+          const joinCallbacks = eventListeners["room-joined"] || [];
+          joinCallbacks.forEach((callback) => callback({ room: data.room }));
+        }, 500);
+      }
+      if (event === "send-message" && data) {
+        setTimeout(() => {
+          const messageCallbacks = eventListeners["message"] || [];
+          const mockMessage: SocketMessage = {
+            id: Date.now().toString(),
+            userId: "demo-user",
+            userName: "Demo User",
+            message: data.message,
+            timestamp: Date.now(),
+            type: "text",
+          };
+          messageCallbacks.forEach((callback) => callback(mockMessage));
+        }, 200);
+      }
+    },
+    on(event: string, callback: (data?: any) => void) {
+      if (!eventListeners[event]) {
+        eventListeners[event] = [];
+      }
+      eventListeners[event].push(callback);
+    },
+    off(event: string, callback?: (data?: any) => void) {
+      if (!eventListeners[event]) return;
+      if (callback) {
+        eventListeners[event] = eventListeners[event].filter(
+          (cb) => cb !== callback
+        );
+      } else {
+        delete eventListeners[event];
+      }
+    },
+  };
+};
+
+// Context interface
+interface SocketContextType {
+  state: SocketState;
+  dispatch: React.Dispatch<SocketAction>;
+  // Connection methods
+  connect: () => void;
+  disconnect: () => void;
+  // Room methods
+  joinRoom: (room: string) => void;
+  leaveRoom: () => void;
+  // Message methods
+  sendMessage: (
+    message: string,
+    type?: SocketMessage["type"],
+    data?: any
+  ) => void;
+  clearMessages: () => void;
+  // User methods
+  updateUserStatus: (status: SocketUser["status"]) => void;
+  // Utility methods
+  isConnected: () => boolean;
+  getCurrentRoom: () => string | null;
+  getUsers: () => SocketUser[];
+  getMessages: () => SocketMessage[];
+}
+
+// Create context
+const SocketContext = createContext<SocketContextType | undefined>(undefined);
+
+// Provider component
+interface SocketProviderProps {
+  children: React.ReactNode;
+  socketUrl?: string; // For future real Socket.IO integration
+}
+
+export const SocketProvider: React.FC<SocketProviderProps> = ({
+  children,
+  socketUrl = "ws://localhost:3001",
+}) => {
+  const [state, dispatch] = useReducer(socketReducer, initialState);
+  const socketRef = useRef<MockSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 5;
+
+  // Initialize socket
+  useEffect(() => {
+    // For now, use mock socket. In production, this would be:
+    // socketRef.current = io(socketUrl);
+    socketRef.current = createMockSocket();
+
+    const socket = socketRef.current;
+
+    // Set up event listeners
+    socket.on("connect", () => {
+      dispatch({ type: "SET_CONNECTED", payload: true });
+      reconnectAttemptsRef.current = 0;
+
+      // Simulate getting initial data
+      setTimeout(() => {
+        dispatch({ type: "SET_ROOMS", payload: ["general", "tech", "random"] });
+
+        // Add some demo users
+        const demoUsers: SocketUser[] = [
+          {
+            id: "user-1",
+            name: "Alice Johnson",
+            status: "online",
+            lastSeen: Date.now(),
+          },
+          {
+            id: "user-2",
+            name: "Bob Smith",
+            status: "away",
+            lastSeen: Date.now() - 300000, // 5 minutes ago
+          },
+        ];
+
+        demoUsers.forEach((user) => {
+          dispatch({ type: "ADD_USER", payload: user });
+        });
+      }, 1000);
+    });
+
+    socket.on("disconnect", () => {
+      dispatch({ type: "SET_CONNECTED", payload: false });
+
+      // Attempt to reconnect
+      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const delay = Math.min(
+          1000 * Math.pow(2, reconnectAttemptsRef.current),
+          30000
+        );
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current++;
+          dispatch({ type: "SET_CONNECTING", payload: true });
+          socket.connect();
+        }, delay);
+      } else {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Failed to reconnect after multiple attempts",
+        });
+      }
+    });
+
+    socket.on("error", (error: any) => {
+      dispatch({
+        type: "SET_ERROR",
+        payload: error.message || "Connection error",
+      });
+    });
+
+    socket.on("user-joined", (user: SocketUser) => {
+      dispatch({ type: "ADD_USER", payload: user });
+    });
+
+    socket.on("user-left", (userId: string) => {
+      dispatch({ type: "REMOVE_USER", payload: userId });
+    });
+
+    socket.on(
+      "user-updated",
+      (data: { id: string; updates: Partial<SocketUser> }) => {
+        dispatch({ type: "UPDATE_USER", payload: data });
+      }
+    );
+
+    socket.on("message", (message: SocketMessage) => {
+      dispatch({ type: "ADD_MESSAGE", payload: message });
+    });
+
+    socket.on("room-joined", (data: { room: string }) => {
+      dispatch({ type: "JOIN_ROOM", payload: data.room });
+    });
+
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      socket.disconnect();
+    };
+  }, [socketUrl]);
+
+  // Connection methods
+  const connect = () => {
+    if (socketRef.current && !state.connected && !state.connecting) {
+      dispatch({ type: "SET_CONNECTING", payload: true });
+      socketRef.current.connect();
+    }
+  };
+
+  const disconnect = () => {
+    if (socketRef.current) {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      socketRef.current.disconnect();
+      dispatch({ type: "SET_CONNECTED", payload: false });
+    }
+  };
+
+  // Room methods
+  const joinRoom = (room: string) => {
+    if (socketRef.current && state.connected) {
+      socketRef.current.emit("join-room", { room });
+    }
+  };
+
+  const leaveRoom = () => {
+    if (socketRef.current && state.connected && state.currentRoom) {
+      socketRef.current.emit("leave-room", { room: state.currentRoom });
+      dispatch({ type: "LEAVE_ROOM" });
+    }
+  };
+
+  // Message methods
+  const sendMessage = (
+    message: string,
+    type: SocketMessage["type"] = "text",
+    data?: any
+  ) => {
+    if (socketRef.current && state.connected) {
+      socketRef.current.emit("send-message", {
+        message,
+        type,
+        data,
+        room: state.currentRoom,
+      });
+    }
+  };
+
+  const clearMessages = () => {
+    dispatch({ type: "CLEAR_MESSAGES" });
+  };
+
+  // User methods
+  const updateUserStatus = (status: SocketUser["status"]) => {
+    if (socketRef.current && state.connected) {
+      socketRef.current.emit("update-status", { status });
+    }
+  };
+
+  // Utility methods
+  const isConnected = () => state.connected;
+  const getCurrentRoom = () => state.currentRoom;
+  const getUsers = () => state.users;
+  const getMessages = () => state.messages;
+
+  const contextValue: SocketContextType = {
+    state,
+    dispatch,
+    connect,
+    disconnect,
+    joinRoom,
+    leaveRoom,
+    sendMessage,
+    clearMessages,
+    updateUserStatus,
+    isConnected,
+    getCurrentRoom,
+    getUsers,
+    getMessages,
+  };
+
+  return (
+    <SocketContext.Provider value={contextValue}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
+
+// Custom hook to use the SocketContext
+export const useSocket = (): SocketContextType => {
+  const context = useContext(SocketContext);
+  if (context === undefined) {
+    throw new Error("useSocket must be used within a SocketProvider");
+  }
+  return context;
+};
+
+export default SocketContext;
