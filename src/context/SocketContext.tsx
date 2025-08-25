@@ -256,6 +256,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
       dispatch({ type: "JOIN_ROOM", payload: dt.room });
     });
 
+    // Auto-connect on mount
+    socket.connect();
+
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);

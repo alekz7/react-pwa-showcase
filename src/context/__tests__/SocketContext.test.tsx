@@ -9,6 +9,9 @@ import {
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { SocketProvider, useSocket } from "../SocketContext";
 
+// Configure longer timeout for all tests
+vi.setConfig({ testTimeout: 30000 });
+
 // Test component that uses the context
 const TestComponent: React.FC = () => {
   const {
@@ -26,6 +29,8 @@ const TestComponent: React.FC = () => {
     getMessages,
   } = useSocket();
 
+  const [userStatus, setUserStatus] = React.useState<string>("offline");
+
   return (
     <div>
       <div data-testid="connected">{state.connected.toString()}</div>
@@ -35,6 +40,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="messages-count">{state.messages.length}</div>
       <div data-testid="rooms-count">{state.rooms.length}</div>
       <div data-testid="current-room">{state.currentRoom || "none"}</div>
+      <div data-testid="user-status">{userStatus}</div>
 
       <div data-testid="is-connected">{isConnected().toString()}</div>
       <div data-testid="get-current-room">{getCurrentRoom() || "none"}</div>
@@ -47,18 +53,25 @@ const TestComponent: React.FC = () => {
       <button onClick={leaveRoom}>Leave Room</button>
       <button onClick={() => sendMessage("Hello World")}>Send Message</button>
       <button onClick={clearMessages}>Clear Messages</button>
-      <button onClick={() => updateUserStatus("away")}>Update Status</button>
+      <button
+        onClick={() => {
+          updateUserStatus("online");
+          setUserStatus("online");
+        }}
+      >
+        Update Status
+      </button>
     </div>
   );
 };
 
 describe("SocketContext", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   it("provides initial state correctly", () => {
@@ -100,42 +113,61 @@ describe("SocketContext", () => {
     // Initially not connected
     expect(screen.getByTestId("connected")).toHaveTextContent("false");
 
-    // Auto-connect should happen on mount
-    act(() => {
-      vi.advanceTimersByTime(3000); // Wait for connection delay
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    // Auto-connect should happen on mount - wait for it
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     // Should have demo data loaded
-    await waitFor(() => {
-      expect(screen.getByTestId("rooms-count")).toHaveTextContent("3");
-      expect(screen.getByTestId("users-count")).toHaveTextContent("2");
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("rooms-count")).toHaveTextContent("3");
+        expect(screen.getByTestId("users-count")).toHaveTextContent("2");
+      },
+      { timeout: 10000 }
+    );
+  }, 20000);
 
-  it("handles manual connection", () => {
+  it("handles manual connection", async () => {
     render(
       <SocketProvider>
         <TestComponent />
       </SocketProvider>
     );
 
+    // Wait for auto-connection first, then disconnect to test manual connection
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
+
+    // Disconnect first
+    act(() => {
+      screen.getByText("Disconnect").click();
+    });
+
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+
+    // Now test manual connection
     act(() => {
       screen.getByText("Connect").click();
     });
 
     expect(screen.getByTestId("connecting")).toHaveTextContent("true");
 
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    expect(screen.getByTestId("connecting")).toHaveTextContent("false");
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+        expect(screen.getByTestId("connecting")).toHaveTextContent("false");
+      },
+      { timeout: 10000 }
+    );
+  }, 20000);
 
   it("handles disconnection", async () => {
     render(
@@ -145,13 +177,12 @@ describe("SocketContext", () => {
     );
 
     // Wait for auto-connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     // Disconnect
     act(() => {
@@ -159,7 +190,7 @@ describe("SocketContext", () => {
     });
 
     expect(screen.getByTestId("connected")).toHaveTextContent("false");
-  });
+  }, 20000);
 
   it("joins and leaves rooms", async () => {
     render(
@@ -169,13 +200,12 @@ describe("SocketContext", () => {
     );
 
     // Wait for connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     // Join room
     act(() => {
@@ -183,13 +213,14 @@ describe("SocketContext", () => {
     });
 
     // Wait for room join response
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("current-room")).toHaveTextContent("test-room");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("current-room")).toHaveTextContent(
+          "test-room"
+        );
+      },
+      { timeout: 10000 }
+    );
 
     // Leave room
     act(() => {
@@ -197,7 +228,7 @@ describe("SocketContext", () => {
     });
 
     expect(screen.getByTestId("current-room")).toHaveTextContent("none");
-  });
+  }, 20000);
 
   it("sends and receives messages", async () => {
     render(
@@ -207,13 +238,12 @@ describe("SocketContext", () => {
     );
 
     // Wait for connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
 
@@ -223,14 +253,13 @@ describe("SocketContext", () => {
     });
 
     // Wait for message response
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
+      },
+      { timeout: 10000 }
+    );
+  }, 20000);
 
   it("clears messages", async () => {
     render(
@@ -240,25 +269,23 @@ describe("SocketContext", () => {
     );
 
     // Wait for connection and send a message
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     act(() => {
       screen.getByText("Send Message").click();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
+      },
+      { timeout: 10000 }
+    );
 
     // Clear messages
     act(() => {
@@ -266,7 +293,7 @@ describe("SocketContext", () => {
     });
 
     expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-  });
+  }, 20000);
 
   it("updates user status", async () => {
     render(
@@ -276,13 +303,12 @@ describe("SocketContext", () => {
     );
 
     // Wait for connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
     // Update status (this would normally trigger server events)
     act(() => {
@@ -291,7 +317,7 @@ describe("SocketContext", () => {
 
     // The mock doesn't simulate status updates, but the method should not throw
     expect(screen.getByTestId("connected")).toHaveTextContent("true");
-  });
+  }, 20000);
 
   it("throws error when used outside provider", () => {
     // Suppress console.error for this test
@@ -324,28 +350,29 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
-    // Wait for connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
+    // Wait for auto-connection
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
-
-    // Simulate adding 105 messages
+    // Send 105 messages rapidly
     for (let i = 0; i < 105; i++) {
       act(() => {
         screen.getByText("Send Message").click();
-        vi.advanceTimersByTime(250);
       });
     }
 
-    // Should only keep last 100 messages
-    await waitFor(() => {
-      expect(screen.getByTestId("messages-count")).toHaveTextContent("100");
-    });
-  });
+    // Wait for all messages to be processed and then check the limit
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("messages-count")).toHaveTextContent("100");
+      },
+      { timeout: 20000 }
+    );
+  }, 30000);
 
   it("clears messages when joining a new room", async () => {
     render(
@@ -354,40 +381,46 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
-    // Wait for connection
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
+    // Wait for auto-connection
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("connected")).toHaveTextContent("true");
+      },
+      { timeout: 15000 }
+    );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("connected")).toHaveTextContent("true");
-    });
-
-    // Send a message
+    // Send a message and wait for it to be processed
     act(() => {
       screen.getByText("Send Message").click();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
+      },
+      { timeout: 10000 }
+    );
 
     // Join room (should clear messages)
     act(() => {
       screen.getByText("Join Room").click();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    // Wait for room to be joined and messages to be cleared
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("current-room")).toHaveTextContent(
+          "test-room"
+        );
+      },
+      { timeout: 10000 }
+    );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("current-room")).toHaveTextContent("test-room");
-      expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
+      },
+      { timeout: 10000 }
+    );
+  }, 25000);
 });

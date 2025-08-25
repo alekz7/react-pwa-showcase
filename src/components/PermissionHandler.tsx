@@ -4,478 +4,354 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   Stepper,
   Step,
   StepLabel,
   StepContent,
+  Button,
   Typography,
   Box,
-  Alert,
   Chip,
   Badge,
+  Alert,
+  CircularProgress,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   ListItemSecondaryAction,
-  IconButton,
-  Collapse,
-  LinearProgress,
 } from "@mui/material";
 import {
   Camera as CameraIcon,
   Mic as MicIcon,
   LocationOn as LocationIcon,
-  Notifications as NotificationIcon,
-  Sensors as SensorIcon,
-  CheckCircle as GrantedIcon,
-  Cancel as DeniedIcon,
-  Help as PromptIcon,
-  Block as UnsupportedIcon,
-  Refresh as RefreshIcon,
-  ExpandMore as ExpandIcon,
-  ExpandLess as CollapseIcon,
-  Settings as SettingsIcon,
+  Notifications as NotificationsIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Warning as WarningIcon,
 } from "@mui/icons-material";
-import { usePermissions } from "../hooks/usePermissions";
-import type { PermissionName, PermissionState } from "../hooks/usePermissions";
+import {
+  usePermissions,
+  type PermissionName,
+  type PermissionStatus,
+} from "../hooks/usePermissions";
 
 interface PermissionHandlerProps {
   open: boolean;
   onClose: () => void;
-  requiredPermissions?: PermissionName[];
+  requiredPermissions: PermissionName[];
+  onPermissionsGranted?: () => void;
   title?: string;
   description?: string;
-  onAllGranted?: () => void;
-  onSomeGranted?: (granted: PermissionName[]) => void;
-  onAllDenied?: () => void;
 }
 
-const PERMISSION_ICONS: Record<PermissionName, React.ReactElement> = {
-  camera: <CameraIcon />,
-  microphone: <MicIcon />,
-  geolocation: <LocationIcon />,
-  notifications: <NotificationIcon />,
-  accelerometer: <SensorIcon />,
-  gyroscope: <SensorIcon />,
-  magnetometer: <SensorIcon />,
+const permissionConfig = {
+  camera: {
+    icon: CameraIcon,
+    label: "Camera Access",
+    description: "Required to capture photos and videos",
+    reason:
+      "This demo needs camera access to show photo capture and video recording capabilities.",
+  },
+  microphone: {
+    icon: MicIcon,
+    label: "Microphone Access",
+    description: "Required to record audio",
+    reason:
+      "This demo needs microphone access to show audio recording and analysis features.",
+  },
+  geolocation: {
+    icon: LocationIcon,
+    label: "Location Access",
+    description: "Required to access your location",
+    reason:
+      "This demo needs location access to show GPS tracking and location-based features.",
+  },
+  notifications: {
+    icon: NotificationsIcon,
+    label: "Notification Permission",
+    description: "Required to send push notifications",
+    reason:
+      "This demo needs notification permission to show push notification capabilities.",
+  },
 };
 
-const PERMISSION_LABELS: Record<PermissionName, string> = {
-  camera: "Camera",
-  microphone: "Microphone",
-  geolocation: "Location",
-  notifications: "Notifications",
-  accelerometer: "Motion Sensors",
-  gyroscope: "Orientation",
-  magnetometer: "Compass",
-};
-
-const PERMISSION_DESCRIPTIONS: Record<PermissionName, string> = {
-  camera: "Access your camera to take photos and record videos",
-  microphone: "Access your microphone to record audio",
-  geolocation: "Access your location for location-based features",
-  notifications: "Send you notifications about app updates and features",
-  accelerometer: "Access motion sensors for interactive features",
-  gyroscope: "Access device orientation for enhanced interactions",
-  magnetometer: "Access compass data for navigation features",
-};
-
-const getStateIcon = (state: PermissionState) => {
-  switch (state) {
+const getStatusColor = (status: PermissionStatus) => {
+  switch (status) {
     case "granted":
-      return <GrantedIcon color="success" />;
+      return "success";
     case "denied":
-      return <DeniedIcon color="error" />;
+      return "error";
     case "prompt":
-      return <PromptIcon color="info" />;
-    case "unsupported":
-      return <UnsupportedIcon color="disabled" />;
+      return "warning";
     default:
-      return <PromptIcon color="disabled" />;
+      return "default";
   }
 };
 
-const getStateColor = (state: PermissionState) => {
-  switch (state) {
+const getStatusIcon = (status: PermissionStatus, isRequesting: boolean) => {
+  if (isRequesting) return <CircularProgress size={16} />;
+
+  switch (status) {
     case "granted":
-      return "success" as const;
+      return <CheckIcon color="success" />;
     case "denied":
-      return "error" as const;
+      return <CloseIcon color="error" />;
     case "prompt":
-      return "info" as const;
-    case "unsupported":
-      return "default" as const;
+      return <WarningIcon color="warning" />;
     default:
-      return "default" as const;
+      return <WarningIcon color="disabled" />;
   }
 };
 
 export const PermissionHandler: React.FC<PermissionHandlerProps> = ({
   open,
   onClose,
-  requiredPermissions = [],
+  requiredPermissions,
+  onPermissionsGranted,
   title = "Permissions Required",
-  description = "This feature requires the following permissions to work properly.",
-  onAllGranted,
-  onSomeGranted,
-  onAllDenied,
+  description = "This demo requires the following permissions to function properly:",
 }) => {
   const {
     permissions,
     requestPermission,
-    requestMultiplePermissions,
-    refreshPermissions,
-    getPermissionInstructions,
+    checkPermission,
+    hasPermission,
+    isRequesting,
   } = usePermissions();
-
   const [activeStep, setActiveStep] = useState(0);
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [expandedInstructions, setExpandedInstructions] = useState<
-    Record<string, boolean>
-  >({});
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
 
-  // Filter permissions to show only required ones or all if none specified
-  const permissionsToShow =
-    requiredPermissions.length > 0
-      ? requiredPermissions
-      : (Object.keys(permissions) as PermissionName[]);
-
-  const relevantPermissions = permissionsToShow.map((name) => ({
-    ...permissions[name],
-    name,
-  }));
-
-  const grantedCount = relevantPermissions.filter(
-    (p) => p.state === "granted"
-  ).length;
-  const deniedCount = relevantPermissions.filter(
-    (p) => p.state === "denied"
-  ).length;
-  const supportedCount = relevantPermissions.filter(
-    (p) => p.isSupported
-  ).length;
-
-  // Handle permission request
-  const handleRequestPermission = async (name: PermissionName) => {
-    setIsRequesting(true);
-
-    try {
-      await requestPermission(name, {
-        onGranted: () => {
-          console.log(`${name} permission granted`);
-        },
-        onDenied: () => {
-          console.log(`${name} permission denied`);
-        },
-        onError: (error) => {
-          console.error(`${name} permission error:`, error);
-        },
-      });
-    } finally {
-      setIsRequesting(false);
-    }
-  };
-
-  // Handle request all permissions
-  const handleRequestAll = async () => {
-    setIsRequesting(true);
-
-    const supportedPermissions = relevantPermissions
-      .filter((p) => p.isSupported && p.state !== "granted")
-      .map((p) => p.name);
-
-    if (supportedPermissions.length > 0) {
-      await requestMultiplePermissions(supportedPermissions);
-    }
-
-    setIsRequesting(false);
-  };
-
-  // Toggle instruction expansion
-  const toggleInstructions = (name: PermissionName) => {
-    setExpandedInstructions((prev) => ({
-      ...prev,
-      [name]: !prev[name],
-    }));
-  };
-
-  // Check completion status
+  // Check all permissions when dialog opens
   useEffect(() => {
-    const granted = relevantPermissions.filter((p) => p.state === "granted");
-    const denied = relevantPermissions.filter((p) => p.state === "denied");
-    const supported = relevantPermissions.filter((p) => p.isSupported);
-
-    if (granted.length === supported.length && supported.length > 0) {
-      onAllGranted?.();
-    } else if (granted.length > 0) {
-      onSomeGranted?.(granted.map((p) => p.name));
-    } else if (denied.length === supported.length && supported.length > 0) {
-      onAllDenied?.();
+    if (open) {
+      setIsCheckingPermissions(true);
+      Promise.all(
+        requiredPermissions.map((permission) => checkPermission(permission))
+      ).finally(() => {
+        setIsCheckingPermissions(false);
+      });
     }
-  }, [
-    permissions,
-    relevantPermissions,
-    onAllGranted,
-    onSomeGranted,
-    onAllDenied,
-  ]);
+  }, [open, requiredPermissions, checkPermission]);
 
-  const steps = [
-    {
-      label: "Review Permissions",
-      description: "See what permissions are needed and why",
-    },
-    {
-      label: "Grant Permissions",
-      description: "Allow access to required features",
-    },
-    {
-      label: "Complete Setup",
-      description: "Verify all permissions are working",
-    },
-  ];
+  // Check if all required permissions are granted
+  const allPermissionsGranted = requiredPermissions.every((permission) =>
+    hasPermission(permission)
+  );
+
+  // Handle permission request for current step
+  const handleRequestPermission = async () => {
+    const permission = requiredPermissions[activeStep];
+    if (permission) {
+      const result = await requestPermission(permission);
+
+      if (result === "granted") {
+        // Move to next step or finish
+        if (activeStep < requiredPermissions.length - 1) {
+          setActiveStep(activeStep + 1);
+        } else {
+          // All permissions granted
+          onPermissionsGranted?.();
+        }
+      }
+    }
+  };
+
+  const handleNext = () => {
+    setActiveStep(activeStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep(activeStep - 1);
+  };
+
+  const handleFinish = () => {
+    if (allPermissionsGranted) {
+      onPermissionsGranted?.();
+    }
+    onClose();
+  };
+
+  const currentPermission = requiredPermissions[activeStep];
+  const currentConfig = currentPermission
+    ? permissionConfig[currentPermission]
+    : null;
+  const currentStatus = currentPermission
+    ? permissions[currentPermission]
+    : null;
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: { minHeight: "60vh" },
+        sx: { minHeight: 400 },
       }}
     >
       <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">{title}</Typography>
-          <Box display="flex" gap={1}>
-            <Badge badgeContent={grantedCount} color="success">
-              <Chip
-                icon={<GrantedIcon />}
-                label="Granted"
-                size="small"
-                color="success"
-                variant="outlined"
-              />
-            </Badge>
-            {deniedCount > 0 && (
-              <Badge badgeContent={deniedCount} color="error">
-                <Chip
-                  icon={<DeniedIcon />}
-                  label="Denied"
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                />
-              </Badge>
-            )}
-          </Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          {title}
+          <Badge
+            badgeContent={
+              requiredPermissions.filter((p) => hasPermission(p)).length
+            }
+            max={requiredPermissions.length}
+            color="primary"
+          >
+            <Chip
+              label={`${requiredPermissions.length} permissions`}
+              size="small"
+              variant="outlined"
+            />
+          </Badge>
         </Box>
       </DialogTitle>
 
       <DialogContent>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          {description}
-        </Typography>
+        {isCheckingPermissions ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            py={4}
+          >
+            <CircularProgress />
+            <Typography variant="body2" sx={{ ml: 2 }}>
+              Checking permissions...
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              {description}
+            </Typography>
 
-        <Stepper activeStep={activeStep} orientation="vertical" sx={{ mt: 2 }}>
-          {steps.map((step, index) => (
-            <Step key={step.label}>
-              <StepLabel>{step.label}</StepLabel>
-              <StepContent>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {step.description}
-                </Typography>
+            {/* Permission Overview */}
+            <Box mb={3}>
+              <Typography variant="subtitle2" gutterBottom>
+                Permission Status:
+              </Typography>
+              <List dense>
+                {requiredPermissions.map((permission) => {
+                  const config = permissionConfig[permission];
+                  const status = permissions[permission];
+                  const IconComponent = config.icon;
 
-                {index === 0 && (
-                  <List>
-                    {relevantPermissions.map((permission) => (
-                      <ListItem key={permission.name} divider>
-                        <ListItemIcon>
-                          {PERMISSION_ICONS[permission.name]}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={PERMISSION_LABELS[permission.name]}
-                          secondary={PERMISSION_DESCRIPTIONS[permission.name]}
-                        />
-                        <ListItemSecondaryAction>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Chip
-                              icon={getStateIcon(permission.state)}
-                              label={permission.state}
-                              size="small"
-                              color={getStateColor(permission.state)}
-                              variant="outlined"
-                            />
-                            {permission.state === "denied" && (
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  toggleInstructions(permission.name)
-                                }
-                              >
-                                {expandedInstructions[permission.name] ? (
-                                  <CollapseIcon />
-                                ) : (
-                                  <ExpandIcon />
-                                )}
-                              </IconButton>
-                            )}
-                          </Box>
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-
-                {index === 1 && (
-                  <Box>
-                    {isRequesting && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" gutterBottom>
-                          Requesting permissions...
-                        </Typography>
-                        <LinearProgress />
-                      </Box>
-                    )}
-
-                    <List>
-                      {relevantPermissions.map((permission) => (
-                        <Box key={permission.name}>
-                          <ListItem>
-                            <ListItemIcon>
-                              {PERMISSION_ICONS[permission.name]}
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={PERMISSION_LABELS[permission.name]}
-                              secondary={
-                                permission.state === "granted"
-                                  ? "Permission granted"
-                                  : permission.state === "denied"
-                                    ? "Permission denied - see instructions below"
-                                    : permission.state === "unsupported"
-                                      ? "Not supported on this device"
-                                      : "Click to request permission"
-                              }
-                            />
-                            <ListItemSecondaryAction>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                {getStateIcon(permission.state)}
-                                {permission.state === "prompt" &&
-                                  permission.isSupported && (
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      onClick={() =>
-                                        handleRequestPermission(permission.name)
-                                      }
-                                      disabled={isRequesting}
-                                    >
-                                      Request
-                                    </Button>
-                                  )}
-                                {permission.state === "denied" && (
-                                  <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      toggleInstructions(permission.name)
-                                    }
-                                  >
-                                    <SettingsIcon />
-                                  </IconButton>
-                                )}
-                              </Box>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-
-                          <Collapse in={expandedInstructions[permission.name]}>
-                            <Box sx={{ pl: 4, pr: 2, pb: 2 }}>
-                              <Alert severity="info" sx={{ mb: 1 }}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                  How to enable{" "}
-                                  {PERMISSION_LABELS[permission.name]}{" "}
-                                  permission:
-                                </Typography>
-                                <List dense>
-                                  {getPermissionInstructions(
-                                    permission.name
-                                  ).map((instruction, idx) => (
-                                    <ListItem key={idx} sx={{ py: 0.5 }}>
-                                      <Typography variant="body2">
-                                        {idx + 1}. {instruction}
-                                      </Typography>
-                                    </ListItem>
-                                  ))}
-                                </List>
-                              </Alert>
-                            </Box>
-                          </Collapse>
+                  return (
+                    <ListItem key={permission}>
+                      <ListItemIcon>
+                        <IconComponent />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={config.label}
+                        secondary={config.description}
+                      />
+                      <ListItemSecondaryAction>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          {getStatusIcon(status.status, status.isRequesting)}
+                          <Chip
+                            label={status.status}
+                            size="small"
+                            color={getStatusColor(status.status)}
+                            variant="outlined"
+                          />
                         </Box>
-                      ))}
-                    </List>
-                  </Box>
-                )}
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Box>
 
-                {index === 2 && (
-                  <Box>
-                    <Alert
-                      severity={
-                        grantedCount === supportedCount ? "success" : "warning"
-                      }
-                      sx={{ mb: 2 }}
-                    >
-                      <Typography variant="body2">
-                        {grantedCount === supportedCount
-                          ? "All permissions have been granted! You can now use all features."
-                          : `${grantedCount} of ${supportedCount} permissions granted. Some features may be limited.`}
-                      </Typography>
-                    </Alert>
+            {/* Stepper for permission requests */}
+            {!allPermissionsGranted && (
+              <Stepper activeStep={activeStep} orientation="vertical">
+                {requiredPermissions.map((permission, index) => {
+                  const config = permissionConfig[permission];
+                  const status = permissions[permission];
+                  const IconComponent = config.icon;
 
-                    <Typography variant="body2" color="text.secondary">
-                      You can change these permissions later in your browser
-                      settings or by clicking the lock icon in the address bar.
-                    </Typography>
-                  </Box>
-                )}
+                  return (
+                    <Step key={permission}>
+                      <StepLabel
+                        icon={<IconComponent />}
+                        error={status.status === "denied"}
+                      >
+                        {config.label}
+                      </StepLabel>
+                      <StepContent>
+                        <Typography variant="body2" paragraph>
+                          {config.reason}
+                        </Typography>
 
-                <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-                  {index > 0 && (
-                    <Button onClick={() => setActiveStep(index - 1)}>
-                      Back
-                    </Button>
-                  )}
-                  {index < steps.length - 1 && (
-                    <Button
-                      variant="contained"
-                      onClick={() => setActiveStep(index + 1)}
-                    >
-                      Next
-                    </Button>
-                  )}
-                </Box>
-              </StepContent>
-            </Step>
-          ))}
-        </Stepper>
+                        {status.error && (
+                          <Alert severity="error" sx={{ mb: 2 }}>
+                            {status.error}
+                          </Alert>
+                        )}
+
+                        <Box sx={{ mb: 2 }}>
+                          <Button
+                            variant="contained"
+                            onClick={handleRequestPermission}
+                            disabled={
+                              status.isRequesting || status.status === "granted"
+                            }
+                            startIcon={
+                              status.isRequesting ? (
+                                <CircularProgress size={16} />
+                              ) : null
+                            }
+                          >
+                            {status.status === "granted"
+                              ? "Permission Granted"
+                              : status.isRequesting
+                                ? "Requesting..."
+                                : "Grant Permission"}
+                          </Button>
+
+                          {index > 0 && (
+                            <Button onClick={handleBack} sx={{ ml: 1 }}>
+                              Back
+                            </Button>
+                          )}
+
+                          {status.status === "granted" &&
+                            index < requiredPermissions.length - 1 && (
+                              <Button onClick={handleNext} sx={{ ml: 1 }}>
+                                Next
+                              </Button>
+                            )}
+                        </Box>
+                      </StepContent>
+                    </Step>
+                  );
+                })}
+              </Stepper>
+            )}
+
+            {allPermissionsGranted && (
+              <Alert severity="success">
+                <Typography variant="body2">
+                  All required permissions have been granted! You can now use
+                  all features of this demo.
+                </Typography>
+              </Alert>
+            )}
+          </>
+        )}
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={refreshPermissions} startIcon={<RefreshIcon />}>
-          Refresh
-        </Button>
-        {supportedCount > grantedCount && (
-          <Button
-            variant="outlined"
-            onClick={handleRequestAll}
-            disabled={isRequesting}
-          >
-            Request All
-          </Button>
-        )}
-        <Button onClick={onClose} variant="contained">
-          {grantedCount === supportedCount ? "Done" : "Continue Anyway"}
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          onClick={handleFinish}
+          variant="contained"
+          disabled={!allPermissionsGranted}
+        >
+          {allPermissionsGranted ? "Continue" : "Skip for Now"}
         </Button>
       </DialogActions>
     </Dialog>
