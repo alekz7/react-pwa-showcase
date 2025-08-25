@@ -3,15 +3,35 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import PermissionHandler from "../PermissionHandler";
+import type {
+  PermissionName,
+  PermissionState,
+} from "../../hooks/usePermissions";
 
 // Mock the usePermissions hook
 const mockUsePermissions = {
   permissions: {
-    camera: { status: "prompt", isRequesting: false },
-    microphone: { status: "prompt", isRequesting: false },
-    geolocation: { status: "prompt", isRequesting: false },
-    notifications: { status: "prompt", isRequesting: false },
-  },
+    camera: {
+      status: "prompt" as const,
+      isRequesting: false,
+      error: undefined,
+    },
+    microphone: {
+      status: "prompt" as const,
+      isRequesting: false,
+      error: undefined,
+    },
+    geolocation: {
+      status: "prompt" as const,
+      isRequesting: false,
+      error: undefined,
+    },
+    notifications: {
+      status: "prompt" as const,
+      isRequesting: false,
+      error: undefined,
+    },
+  } as Record<PermissionName, PermissionState>,
   requestPermission: vi.fn(),
   checkPermission: vi.fn(),
   hasPermission: vi.fn(),
@@ -32,7 +52,7 @@ describe("PermissionHandler", () => {
   const defaultProps = {
     open: true,
     onClose: vi.fn(),
-    requiredPermissions: ["camera", "microphone"] as const,
+    requiredPermissions: ["camera", "microphone"] as PermissionName[],
     onPermissionsGranted: vi.fn(),
   };
 
@@ -41,19 +61,36 @@ describe("PermissionHandler", () => {
 
     // Reset mock permissions to default state
     mockUsePermissions.permissions = {
-      camera: { status: "prompt", isRequesting: false },
-      microphone: { status: "prompt", isRequesting: false },
-      geolocation: { status: "prompt", isRequesting: false },
-      notifications: { status: "prompt", isRequesting: false },
-    };
+      camera: {
+        status: "prompt" as const,
+        isRequesting: false,
+        error: undefined,
+      },
+      microphone: {
+        status: "prompt" as const,
+        isRequesting: false,
+        error: undefined,
+      },
+      geolocation: {
+        status: "prompt" as const,
+        isRequesting: false,
+        error: undefined,
+      },
+      notifications: {
+        status: "prompt" as const,
+        isRequesting: false,
+        error: undefined,
+      },
+    } as Record<PermissionName, PermissionState>;
 
     mockUsePermissions.hasPermission.mockImplementation(
-      (permission) =>
+      (permission: PermissionName) =>
         mockUsePermissions.permissions[permission].status === "granted"
     );
 
     mockUsePermissions.isRequesting.mockImplementation(
-      (permission) => mockUsePermissions.permissions[permission].isRequesting
+      (permission: PermissionName) =>
+        mockUsePermissions.permissions[permission].isRequesting
     );
 
     mockUsePermissions.checkPermission.mockResolvedValue("prompt");
@@ -127,9 +164,13 @@ describe("PermissionHandler", () => {
   });
 
   it("shows granted state when permission is granted", () => {
-    mockUsePermissions.permissions.camera.status = "granted";
+    mockUsePermissions.permissions.camera = {
+      status: "granted" as const,
+      isRequesting: false,
+      error: undefined,
+    };
     mockUsePermissions.hasPermission.mockImplementation(
-      (permission) => permission === "camera"
+      (permission: PermissionName) => permission === "camera"
     );
 
     renderWithTheme(<PermissionHandler {...defaultProps} />);
@@ -138,8 +179,11 @@ describe("PermissionHandler", () => {
   });
 
   it("shows error message when permission fails", () => {
-    mockUsePermissions.permissions.camera.status = "denied";
-    mockUsePermissions.permissions.camera.error = "Camera access denied";
+    mockUsePermissions.permissions.camera = {
+      status: "denied" as const,
+      isRequesting: false,
+      error: "Camera access denied",
+    };
 
     renderWithTheme(<PermissionHandler {...defaultProps} />);
 
@@ -147,8 +191,16 @@ describe("PermissionHandler", () => {
   });
 
   it("shows success message when all permissions are granted", () => {
-    mockUsePermissions.permissions.camera.status = "granted";
-    mockUsePermissions.permissions.microphone.status = "granted";
+    mockUsePermissions.permissions.camera = {
+      status: "granted" as const,
+      isRequesting: false,
+      error: undefined,
+    };
+    mockUsePermissions.permissions.microphone = {
+      status: "granted" as const,
+      isRequesting: false,
+      error: undefined,
+    };
     mockUsePermissions.hasPermission.mockReturnValue(true);
 
     renderWithTheme(<PermissionHandler {...defaultProps} />);
@@ -161,8 +213,16 @@ describe("PermissionHandler", () => {
   });
 
   it("enables continue button when all permissions are granted", () => {
-    mockUsePermissions.permissions.camera.status = "granted";
-    mockUsePermissions.permissions.microphone.status = "granted";
+    mockUsePermissions.permissions.camera = {
+      status: "granted" as const,
+      isRequesting: false,
+      error: undefined,
+    };
+    mockUsePermissions.permissions.microphone = {
+      status: "granted" as const,
+      isRequesting: false,
+      error: undefined,
+    };
     mockUsePermissions.hasPermission.mockReturnValue(true);
 
     renderWithTheme(<PermissionHandler {...defaultProps} />);
@@ -231,7 +291,7 @@ describe("PermissionHandler", () => {
         "microphone",
         "geolocation",
         "notifications",
-      ] as const,
+      ] as PermissionName[],
     };
 
     renderWithTheme(<PermissionHandler {...allPermissionsProps} />);

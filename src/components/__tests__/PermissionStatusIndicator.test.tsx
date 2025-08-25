@@ -1,16 +1,14 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import PermissionStatusIndicator from "../PermissionStatusIndicator";
 import { usePermissions } from "../../hooks/usePermissions";
-import type { PermissionName } from "../../hooks/usePermissions";
 
 // Mock the usePermissions hook
-jest.mock("../../hooks/usePermissions");
+vi.mock("../../hooks/usePermissions");
 
-const mockUsePermissions = usePermissions as jest.MockedFunction<
-  typeof usePermissions
->;
+const mockUsePermissions = usePermissions as ReturnType<typeof vi.fn>;
 
 const theme = createTheme();
 
@@ -20,63 +18,38 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const mockPermissions = {
   camera: {
-    name: "camera" as PermissionName,
-    state: "granted" as const,
-    canRequest: true,
-    isSupported: true,
+    status: "granted" as const,
+    isRequesting: false,
+    error: undefined,
   },
   microphone: {
-    name: "microphone" as PermissionName,
-    state: "denied" as const,
-    canRequest: true,
-    isSupported: true,
+    status: "denied" as const,
+    isRequesting: false,
+    error: undefined,
   },
   geolocation: {
-    name: "geolocation" as PermissionName,
-    state: "prompt" as const,
-    canRequest: true,
-    isSupported: true,
+    status: "prompt" as const,
+    isRequesting: false,
+    error: undefined,
   },
   notifications: {
-    name: "notifications" as PermissionName,
-    state: "unsupported" as const,
-    canRequest: false,
-    isSupported: false,
-  },
-  accelerometer: {
-    name: "accelerometer" as PermissionName,
-    state: "granted" as const,
-    canRequest: true,
-    isSupported: true,
-  },
-  gyroscope: {
-    name: "gyroscope" as PermissionName,
-    state: "prompt" as const,
-    canRequest: true,
-    isSupported: true,
-  },
-  magnetometer: {
-    name: "magnetometer" as PermissionName,
-    state: "denied" as const,
-    canRequest: true,
-    isSupported: true,
+    status: "unknown" as const,
+    isRequesting: false,
+    error: undefined,
   },
 };
 
 const mockPermissionHooks = {
   permissions: mockPermissions,
-  requestPermission: jest.fn(),
-  requestMultiplePermissions: jest.fn(),
-  checkPermission: jest.fn(),
-  hasPermission: jest.fn(),
-  canUseFeature: jest.fn(),
-  refreshPermissions: jest.fn(),
-  getPermissionInstructions: jest.fn(),
+  requestPermission: vi.fn(),
+  checkPermission: vi.fn(),
+  hasPermission: vi.fn(),
+  isRequesting: vi.fn(),
 };
 
 describe("PermissionStatusIndicator", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUsePermissions.mockReturnValue(mockPermissionHooks);
   });
 
@@ -87,7 +60,7 @@ describe("PermissionStatusIndicator", () => {
       </TestWrapper>
     );
 
-    // Should show supported permissions (excluding unsupported notifications)
+    // Should show permissions with known status (excluding unknown notifications)
     expect(
       screen.getByLabelText(/Camera permission granted/)
     ).toBeInTheDocument();
@@ -97,7 +70,7 @@ describe("PermissionStatusIndicator", () => {
     expect(
       screen.getByLabelText(/Location permission not requested/)
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Notifications/)).not.toBeInTheDocument(); // unsupported
+    expect(screen.queryByLabelText(/Notifications/)).not.toBeInTheDocument(); // unknown status
   });
 
   it("renders only specified permissions when provided", () => {
@@ -142,7 +115,7 @@ describe("PermissionStatusIndicator", () => {
   });
 
   it("calls onPermissionClick when permission is clicked", () => {
-    const onPermissionClick = jest.fn();
+    const onPermissionClick = vi.fn();
 
     render(
       <TestWrapper>
@@ -160,7 +133,7 @@ describe("PermissionStatusIndicator", () => {
   });
 
   it("calls onSettingsClick when settings button is clicked", () => {
-    const onSettingsClick = jest.fn();
+    const onSettingsClick = vi.fn();
 
     render(
       <TestWrapper>
@@ -178,21 +151,15 @@ describe("PermissionStatusIndicator", () => {
     render(
       <TestWrapper>
         <PermissionStatusIndicator
-          permissions={[
-            "camera",
-            "microphone",
-            "geolocation",
-            "accelerometer",
-            "gyroscope",
-          ]}
+          permissions={["camera", "microphone", "geolocation", "notifications"]}
         />
       </TestWrapper>
     );
 
     // Should show summary badge when more than 3 permissions
     expect(screen.getByText("Permissions")).toBeInTheDocument();
-    // Should show count (2 granted out of 5 total supported)
-    expect(screen.getByText("2/5")).toBeInTheDocument();
+    // Should show count (1 granted out of 3 total with known status)
+    expect(screen.getByText("1/3")).toBeInTheDocument();
   });
 
   it("displays correct permission states with appropriate colors", () => {
@@ -243,18 +210,18 @@ describe("PermissionStatusIndicator", () => {
     expect(cameraChip).toHaveClass("MuiChip-sizeMedium");
   });
 
-  it("does not render when no supported permissions", () => {
-    // Mock all permissions as unsupported
-    const unsupportedPermissions = Object.fromEntries(
+  it("does not render when no permissions with known status", () => {
+    // Mock all permissions as unknown
+    const unknownPermissions = Object.fromEntries(
       Object.entries(mockPermissions).map(([key, value]) => [
         key,
-        { ...value, isSupported: false },
+        { ...value, status: "unknown" },
       ])
     );
 
     mockUsePermissions.mockReturnValue({
       ...mockPermissionHooks,
-      permissions: unsupportedPermissions,
+      permissions: unknownPermissions,
     });
 
     const { container } = render(
@@ -292,7 +259,7 @@ describe("PermissionStatusIndicator", () => {
   });
 
   it("makes chips clickable when onPermissionClick is provided", () => {
-    const onPermissionClick = jest.fn();
+    const onPermissionClick = vi.fn();
 
     render(
       <TestWrapper>
@@ -319,7 +286,7 @@ describe("PermissionStatusIndicator", () => {
   });
 
   it("shows settings button when onSettingsClick is provided", () => {
-    const onSettingsClick = jest.fn();
+    const onSettingsClick = vi.fn();
 
     render(
       <TestWrapper>

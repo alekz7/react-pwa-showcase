@@ -172,7 +172,7 @@ describe("usePermissions", () => {
 
     it("handles unsupported notifications", async () => {
       // Remove Notification support by deleting the property
-      delete (global.window as Record<string, unknown>).Notification;
+      delete (global.window as unknown as Record<string, unknown>).Notification;
 
       const { result } = renderHook(() => usePermissions());
 
@@ -277,7 +277,7 @@ describe("usePermissions", () => {
 
     it("handles geolocation permission denial", async () => {
       mockGeolocationGetCurrentPosition.mockImplementation(
-        (successCallback, errorCallback) => {
+        (_successCallback, errorCallback) => {
           setTimeout(
             () =>
               errorCallback!({
