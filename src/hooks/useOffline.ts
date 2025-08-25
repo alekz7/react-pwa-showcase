@@ -9,8 +9,8 @@ interface OfflineState {
 
 interface UseOfflineReturn extends OfflineState {
   checkConnection: () => Promise<boolean>;
-  getCachedData: (key: string) => any;
-  setCachedData: (key: string, data: any) => void;
+  getCachedData: (key: string) => unknown;
+  setCachedData: (key: string, data: unknown) => void;
   clearCache: () => void;
   getCacheSize: () => Promise<number>;
 }
@@ -44,9 +44,21 @@ export const useOffline = (): UseOfflineReturn => {
   useEffect(() => {
     const updateConnectionInfo = () => {
       const connection =
-        (navigator as any).connection ||
-        (navigator as any).mozConnection ||
-        (navigator as any).webkitConnection;
+        (
+          navigator as {
+            connection?: { effectiveType?: string; type?: string };
+          }
+        ).connection ||
+        (
+          navigator as {
+            mozConnection?: { effectiveType?: string; type?: string };
+          }
+        ).mozConnection ||
+        (
+          navigator as {
+            webkitConnection?: { effectiveType?: string; type?: string };
+          }
+        ).webkitConnection;
 
       if (connection) {
         setState((prev) => ({
@@ -59,11 +71,22 @@ export const useOffline = (): UseOfflineReturn => {
     updateConnectionInfo();
 
     // Listen for connection changes
-    const connection = (navigator as any).connection;
-    if (connection) {
+    const connection = (
+      navigator as {
+        connection?: {
+          addEventListener?: (event: string, handler: () => void) => void;
+          removeEventListener?: (event: string, handler: () => void) => void;
+        };
+      }
+    ).connection;
+    if (
+      connection &&
+      connection.addEventListener &&
+      connection.removeEventListener
+    ) {
       connection.addEventListener("change", updateConnectionInfo);
       return () =>
-        connection.removeEventListener("change", updateConnectionInfo);
+        connection.removeEventListener!("change", updateConnectionInfo);
     }
   }, []);
 
@@ -116,7 +139,7 @@ export const useOffline = (): UseOfflineReturn => {
   }, []);
 
   // Cache management functions
-  const getCachedData = useCallback((key: string): any => {
+  const getCachedData = useCallback((key: string): unknown => {
     try {
       const cached = localStorage.getItem(`pwa_cache_${key}`);
       return cached ? JSON.parse(cached) : null;
@@ -126,7 +149,7 @@ export const useOffline = (): UseOfflineReturn => {
     }
   }, []);
 
-  const setCachedData = useCallback((key: string, data: any): void => {
+  const setCachedData = useCallback((key: string, data: unknown): void => {
     try {
       localStorage.setItem(
         `pwa_cache_${key}`,

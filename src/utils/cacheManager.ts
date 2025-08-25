@@ -4,7 +4,7 @@
  */
 
 export interface CacheEntry {
-  data: any;
+  data: unknown;
   timestamp: number;
   expiry?: number;
 }
@@ -23,7 +23,7 @@ class CacheManager {
   /**
    * Store data in cache with optional TTL
    */
-  set(key: string, data: any, ttl?: number): boolean {
+  set(key: string, data: unknown, ttl?: number): boolean {
     try {
       const entry: CacheEntry = {
         data,
@@ -33,8 +33,8 @@ class CacheManager {
 
       localStorage.setItem(this.prefix + key, JSON.stringify(entry));
       return true;
-    } catch (error) {
-      console.warn("Failed to cache data:", error);
+    } catch {
+      console.warn("Failed to cache data");
       return false;
     }
   }
@@ -42,7 +42,7 @@ class CacheManager {
   /**
    * Retrieve data from cache
    */
-  get<T = any>(key: string): T | null {
+  get<T = unknown>(key: string): T | null {
     try {
       const cached = localStorage.getItem(this.prefix + key);
       if (!cached) return null;
@@ -56,8 +56,8 @@ class CacheManager {
       }
 
       return entry.data as T;
-    } catch (error) {
-      console.warn("Failed to retrieve cached data:", error);
+    } catch {
+      console.warn("Failed to retrieve cached data");
       return null;
     }
   }
@@ -76,8 +76,8 @@ class CacheManager {
     try {
       localStorage.removeItem(this.prefix + key);
       return true;
-    } catch (error) {
-      console.warn("Failed to delete cache entry:", error);
+    } catch {
+      console.warn("Failed to delete cache entry");
       return false;
     }
   }
@@ -94,8 +94,8 @@ class CacheManager {
         }
       });
       return true;
-    } catch (error) {
-      console.warn("Failed to clear cache:", error);
+    } catch {
+      console.warn("Failed to clear cache");
       return false;
     }
   }
@@ -120,7 +120,7 @@ class CacheManager {
           if (entry.timestamp < oldestEntry) oldestEntry = entry.timestamp;
           if (entry.timestamp > newestEntry) newestEntry = entry.timestamp;
         }
-      } catch (error) {
+      } catch {
         // Skip invalid entries
       }
     });
@@ -151,7 +151,7 @@ class CacheManager {
             cleanedCount++;
           }
         }
-      } catch (error) {
+      } catch {
         // Remove invalid entries
         localStorage.removeItem(key);
         cleanedCount++;
@@ -174,42 +174,42 @@ class CacheManager {
   /**
    * Cache demo data for offline use
    */
-  cacheDemoData(demoType: string, data: any): boolean {
+  cacheDemoData(demoType: string, data: unknown): boolean {
     return this.set(`demo_${demoType}`, data, 7 * 24 * 60 * 60 * 1000); // 7 days
   }
 
   /**
    * Get cached demo data
    */
-  getCachedDemoData<T = any>(demoType: string): T | null {
+  getCachedDemoData<T = unknown>(demoType: string): T | null {
     return this.get<T>(`demo_${demoType}`);
   }
 
   /**
    * Cache user preferences
    */
-  cacheUserPreferences(preferences: any): boolean {
+  cacheUserPreferences(preferences: unknown): boolean {
     return this.set("user_preferences", preferences, 365 * 24 * 60 * 60 * 1000); // 1 year
   }
 
   /**
    * Get cached user preferences
    */
-  getCachedUserPreferences<T = any>(): T | null {
+  getCachedUserPreferences<T = unknown>(): T | null {
     return this.get<T>("user_preferences");
   }
 
   /**
    * Cache device capabilities
    */
-  cacheDeviceCapabilities(capabilities: any): boolean {
+  cacheDeviceCapabilities(capabilities: unknown): boolean {
     return this.set("device_capabilities", capabilities, 24 * 60 * 60 * 1000); // 1 day
   }
 
   /**
    * Get cached device capabilities
    */
-  getCachedDeviceCapabilities<T = any>(): T | null {
+  getCachedDeviceCapabilities<T = unknown>(): T | null {
     return this.get<T>("device_capabilities");
   }
 }

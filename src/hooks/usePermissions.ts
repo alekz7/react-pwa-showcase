@@ -72,7 +72,7 @@ export const usePermissions = (): UsePermissionsReturn => {
     Record<PermissionName, PermissionStatus>
   >(() => {
     const initialPermissions: Record<PermissionName, PermissionStatus> =
-      {} as any;
+      {} as Record<PermissionName, PermissionStatus>;
 
     Object.keys(PERMISSION_API_NAMES).forEach((name) => {
       const permissionName = name as PermissionName;
@@ -98,8 +98,8 @@ export const usePermissions = (): UsePermissionsReturn => {
 
       try {
         const result = await navigator.permissions.query({
-          name: PERMISSION_API_NAMES[name] as any,
-        });
+          name: PERMISSION_API_NAMES[name] as PermissionName,
+        } as PermissionDescriptor);
         return result.state as PermissionState;
       } catch (error) {
         console.warn(`Failed to check permission for ${name}:`, error);
@@ -136,8 +136,11 @@ export const usePermissions = (): UsePermissionsReturn => {
         case "magnetometer":
           // Motion sensors require permission on iOS 13+
           if (
-            typeof (DeviceOrientationEvent as any).requestPermission ===
-            "function"
+            typeof (
+              DeviceOrientationEvent as {
+                requestPermission?: () => Promise<string>;
+              }
+            ).requestPermission === "function"
           ) {
             return "prompt";
           }
@@ -212,9 +215,10 @@ export const usePermissions = (): UsePermissionsReturn => {
               });
               stream.getTracks().forEach((track) => track.stop());
               result = "granted";
-            } catch (error: any) {
+            } catch (error: unknown) {
+              const err = error as { name?: string };
               result =
-                error.name === "NotAllowedError" ? "denied" : "unsupported";
+                err.name === "NotAllowedError" ? "denied" : "unsupported";
             }
             break;
 
@@ -225,9 +229,10 @@ export const usePermissions = (): UsePermissionsReturn => {
               });
               stream.getTracks().forEach((track) => track.stop());
               result = "granted";
-            } catch (error: any) {
+            } catch (error: unknown) {
+              const err = error as { name?: string };
               result =
-                error.name === "NotAllowedError" ? "denied" : "unsupported";
+                err.name === "NotAllowedError" ? "denied" : "unsupported";
             }
             break;
 
@@ -272,11 +277,16 @@ export const usePermissions = (): UsePermissionsReturn => {
           case "gyroscope":
           case "magnetometer":
             if (
-              typeof (DeviceOrientationEvent as any).requestPermission ===
-              "function"
+              typeof (
+                DeviceOrientationEvent as {
+                  requestPermission?: () => Promise<string>;
+                }
+              ).requestPermission === "function"
             ) {
               const permission = await (
-                DeviceOrientationEvent as any
+                DeviceOrientationEvent as unknown as {
+                  requestPermission: () => Promise<string>;
+                }
               ).requestPermission();
               result = permission === "granted" ? "granted" : "denied";
             } else {
@@ -307,9 +317,10 @@ export const usePermissions = (): UsePermissionsReturn => {
         }
 
         return result;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string };
         const errorMessage =
-          error.message || `Failed to request ${name} permission`;
+          err.message || `Failed to request ${name} permission`;
         onError?.(errorMessage);
 
         setPermissions((prev) => ({
@@ -334,7 +345,10 @@ export const usePermissions = (): UsePermissionsReturn => {
       names: PermissionName[],
       options: PermissionRequestOptions = {}
     ): Promise<Record<PermissionName, PermissionState>> => {
-      const results: Record<PermissionName, PermissionState> = {} as any;
+      const results: Record<PermissionName, PermissionState> = {} as Record<
+        PermissionName,
+        PermissionState
+      >;
 
       for (const name of names) {
         results[name] = await requestPermission(name, options);
@@ -425,7 +439,7 @@ export const usePermissions = (): UsePermissionsReturn => {
         ],
       };
 
-      let instructions = [...baseInstructions[name]];
+      const instructions = [...baseInstructions[name]];
 
       // Add device-specific instructions
       if (isIOS) {
@@ -471,7 +485,7 @@ export const usePermissions = (): UsePermissionsReturn => {
   // Initialize permissions on mount
   useEffect(() => {
     refreshPermissions();
-  }, []);
+  }, [refreshPermissions]);
 
   return {
     permissions,
