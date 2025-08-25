@@ -1,0 +1,105 @@
+{
+  "name": "React PWA Showcase",
+  "short_name": "PWA Showcase",
+  "description": "Comprehensive demonstration of Progressive Web App capabilities and device APIs",
+  "start_url": "/react-pwa-showcase/",
+  "display": "standalone",
+  "theme_color": "#2196F3",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/react-pwa-showcase/",
+  "lang": "en",
+  "categories": ["education", "developer", "utilities"],
+  "icons": [
+    {
+      "src": "/react-pwa-showcase/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/react-pwa-showcase/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/react-pwa-showcase/screenshots/desktop-home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Home page showing device capability demos"
+    },
+    {
+      "src": "/react-pwa-showcase/screenshots/mobile-camera.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Camera demo on mobile device"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Camera Demo",
+      "short_name": "Camera",
+      "description": "Test camera functionality",
+      "url": "/react-pwa-showcase/camera",
+      "icons": [
+        {
+          "src": "/react-pwa-showcase/icons/camera-shortcut.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Location Demo",
+      "short_name": "Location",
+      "description": "Test location services",
+      "url": "/react-pwa-showcase/location",
+      "icons": [
+        {
+          "src": "/react-pwa-showcase/icons/location-shortcut.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

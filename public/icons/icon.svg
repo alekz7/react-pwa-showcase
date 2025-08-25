@@ -1,0 +1,41 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1976D2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" stroke="#1565C0" stroke-width="8"/>
+  
+  <!-- PWA Symbol -->
+  <g transform="translate(256,256)">
+    <!-- Phone/Device outline -->
+    <rect x="-80" y="-120" width="160" height="240" rx="20" ry="20" fill="white" stroke="#1565C0" stroke-width="4"/>
+    
+    <!-- Screen -->
+    <rect x="-65" y="-95" width="130" height="190" rx="8" ry="8" fill="#E3F2FD"/>
+    
+    <!-- App icons simulation -->
+    <circle cx="-35" cy="-65" r="12" fill="#FF5722"/>
+    <circle cx="0" cy="-65" r="12" fill="#4CAF50"/>
+    <circle cx="35" cy="-65" r="12" fill="#FF9800"/>
+    
+    <circle cx="-35" cy="-25" r="12" fill="#9C27B0"/>
+    <circle cx="0" cy="-25" r="12" fill="#F44336"/>
+    <circle cx="35" cy="-25" r="12" fill="#00BCD4"/>
+    
+    <!-- PWA text -->
+    <text x="0" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#1565C0">PWA</text>
+    
+    <!-- Signal/connectivity lines -->
+    <path d="M -100,-40 Q -90,-50 -80,-40" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M -100,-20 Q -90,-30 -80,-20" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M -100,0 Q -90,-10 -80,0" stroke="white" stroke-width="3" fill="none"/>
+    
+    <path d="M 80,-40 Q 90,-50 100,-40" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M 80,-20 Q 90,-30 100,-20" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M 80,0 Q 90,-10 100,0" stroke="white" stroke-width="3" fill="none"/>
+  </g>
+</svg>

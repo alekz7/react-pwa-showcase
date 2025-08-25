@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline - React PWA Showcase</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .offline-container {
+        max-width: 500px;
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      .offline-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.8;
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 16px;
+        font-weight: 300;
+      }
+
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 24px;
+        opacity: 0.9;
+      }
+
+      .features {
+        text-align: left;
+        margin: 24px 0;
+      }
+
+      .features h3 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+        color: #e3f2fd;
+      }
+
+      .features ul {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      .features li {
+        padding: 8px 0;
+        padding-left: 24px;
+        position: relative;
+      }
+
+      .features li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      .retry-button {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 8px;
+      }
+
+      .retry-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-2px);
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 12px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        font-size: 0.9rem;
+      }
+
+      .online {
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+      }
+
+      .offline {
+        background: rgba(255, 152, 0, 0.2);
+        border: 1px solid rgba(255, 152, 0, 0.3);
+      }
+
+      @media (max-width: 600px) {
+        .offline-container {
+          padding: 20px;
+          margin: 10px;
+        }
+
+        h1 {
+          font-size: 1.5rem;
+        }
+
+        .offline-icon {
+          font-size: 3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="offline-container">
+      <div class="offline-icon">📱</div>
+      <h1>You're Offline</h1>
+      <p>
+        Don't worry! This PWA works offline with cached content. Some features
+        are still available:
+      </p>
+
+      <div class="features">
+        <h3>Available Offline:</h3>
+        <ul>
+          <li>Browse cached demo pages</li>
+          <li>View implementation examples</li>
+          <li>Access previously loaded content</li>
+          <li>Use basic app functionality</li>
+        </ul>
+      </div>
+
+      <div class="features">
+        <h3>Requires Internet:</h3>
+        <ul>
+          <li>Real-time communication demo</li>
+          <li>Live location services</li>
+          <li>External API calls</li>
+          <li>Fresh content updates</li>
+        </ul>
+      </div>
+
+      <button class="retry-button" onclick="checkConnection()">
+        Check Connection
+      </button>
+      <button class="retry-button" onclick="goHome()">Go to Home</button>
+
+      <div id="status" class="status offline">Status: Offline Mode Active</div>
+    </div>
+
+    <script>
+      function updateConnectionStatus() {
+        const status = document.getElementById("status");
+        if (navigator.onLine) {
+          status.textContent = "Status: Back Online! Refreshing...";
+          status.className = "status online";
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          status.textContent = "Status: Offline Mode Active";
+          status.className = "status offline";
+        }
+      }
+
+      function checkConnection() {
+        updateConnectionStatus();
+        if (navigator.onLine) {
+          window.location.reload();
+        }
+      }
+
+      function goHome() {
+        window.location.href = "/react-pwa-showcase/";
+      }
+
+      // Listen for online/offline events
+      window.addEventListener("online", updateConnectionStatus);
+      window.addEventListener("offline", updateConnectionStatus);
+
+      // Initial status check
+      updateConnectionStatus();
+
+      // Auto-check connection every 30 seconds
+      setInterval(() => {
+        if (navigator.onLine) {
+          updateConnectionStatus();
+        }
+      }, 30000);
+    </script>
+  </body>
+</html>

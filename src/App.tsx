@@ -3,6 +3,9 @@ import { Box } from "@mui/material";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { AppProvider, DeviceProvider, SocketProvider } from "./context";
 import { Header } from "./components/Header";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { ServiceWorkerStatus } from "./components/ServiceWorkerStatus";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 import {
   Home,
   CameraDemo,
@@ -43,6 +46,11 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Box>
+
+                {/* PWA Components */}
+                <PWAInstallPrompt />
+                <ServiceWorkerStatus />
+                <OfflineIndicator showPersistent />
               </Box>
             </Router>
           </ThemeProvider>
