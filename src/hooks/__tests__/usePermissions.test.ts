@@ -172,7 +172,7 @@ describe("usePermissions", () => {
 
     it("handles unsupported notifications", async () => {
       // Remove Notification support by deleting the property
-      delete (global.window as any).Notification;
+      delete (global.window as Record<string, unknown>).Notification;
 
       const { result } = renderHook(() => usePermissions());
 
@@ -304,7 +304,7 @@ describe("usePermissions", () => {
     });
 
     it("sets isRequesting flag during request", async () => {
-      let resolvePromise: (value: any) => void;
+      let resolvePromise: (value: unknown) => void;
       const promise = new Promise((resolve) => {
         resolvePromise = resolve;
       });

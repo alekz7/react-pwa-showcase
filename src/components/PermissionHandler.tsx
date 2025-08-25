@@ -112,13 +112,8 @@ export const PermissionHandler: React.FC<PermissionHandlerProps> = ({
   title = "Permissions Required",
   description = "This demo requires the following permissions to function properly:",
 }) => {
-  const {
-    permissions,
-    requestPermission,
-    checkPermission,
-    hasPermission,
-    isRequesting,
-  } = usePermissions();
+  const { permissions, requestPermission, checkPermission, hasPermission } =
+    usePermissions();
   const [activeStep, setActiveStep] = useState(0);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
 
@@ -171,14 +166,6 @@ export const PermissionHandler: React.FC<PermissionHandlerProps> = ({
     }
     onClose();
   };
-
-  const currentPermission = requiredPermissions[activeStep];
-  const currentConfig = currentPermission
-    ? permissionConfig[currentPermission]
-    : null;
-  const currentStatus = currentPermission
-    ? permissions[currentPermission]
-    : null;
 
   return (
     <Dialog
