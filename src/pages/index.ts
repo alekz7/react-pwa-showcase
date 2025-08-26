@@ -6,10 +6,8 @@ export { default as CameraDemo } from "./CameraDemo";
 export { default as MicrophoneDemo } from "./MicrophoneDemo";
 export { default as NotFound } from "./NotFound";
 
-// Placeholder exports for future demo pages
-// These will be implemented in later tasks
-export const FileSystemDemo = () =>
-  React.createElement("div", null, "File System Demo - Coming Soon");
+// File System Demo
+export { default as FileSystemDemo } from "./FileSystemDemo";
 export const MotionSensorsDemo = () =>
   React.createElement("div", null, "Motion Sensors Demo - Coming Soon");
 export const LocationDemo = () =>
