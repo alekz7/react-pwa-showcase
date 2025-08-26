@@ -113,11 +113,69 @@ export default defineConfig({
   build: {
     outDir: "dist",
     assetsDir: "assets",
+    sourcemap: false, // Disable sourcemaps in production for smaller bundle
+    minify: "terser", // Use terser for better minification
+    target: "es2015", // Support modern browsers for smaller bundle
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        // Manual chunk splitting for better caching
+        manualChunks: {
+          // Vendor chunk for React and core libraries
+          vendor: ["react", "react-dom", "react-router-dom"],
+
+          // MUI chunk for Material-UI components
+          mui: [
+            "@mui/material",
+            "@mui/icons-material",
+            "@mui/system",
+            "@emotion/react",
+            "@emotion/styled",
+          ],
+
+          // Demo chunks for lazy-loaded components
+          "demo-media": [
+            "./src/pages/CameraDemo",
+            "./src/pages/MicrophoneDemo",
+          ],
+          "demo-sensors": [
+            "./src/pages/MotionSensorsDemo",
+            "./src/pages/LocationDemo",
+          ],
+          "demo-files": ["./src/pages/FileSystemDemo"],
+          "demo-realtime": [
+            "./src/components/demos/RealtimeDemo",
+            "./src/components/demos/PWAFeaturesDemo",
+          ],
+        },
+
+        // Optimize chunk and asset naming
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId
+            ? chunkInfo.facadeModuleId
+                .split("/")
+                .pop()
+                ?.replace(/\.[^/.]+$/, "")
+            : "chunk";
+          return `js/${facadeModuleId}-[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name?.split(".") || [];
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext || "")) {
+            return `images/[name]-[hash][extname]`;
+          }
+          if (/css/i.test(ext || "")) {
+            return `css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+        entryFileNames: "js/[name]-[hash].js",
       },
     },
+
+    // Optimize build performance
+    chunkSizeWarningLimit: 1000, // Warn for chunks larger than 1MB
+    reportCompressedSize: false, // Disable gzip size reporting for faster builds
   },
   assetsInclude: ["**/*.svg"],
 });
