@@ -22,6 +22,8 @@ import {
   FormControlLabel,
   TextField,
   Divider,
+  Fab,
+  Tooltip,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
@@ -31,9 +33,20 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import MapIcon from "@mui/icons-material/Map";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import SpeedIcon from "@mui/icons-material/Speed";
-// import HeightIcon from "@mui/icons-material/Height"; // Unused import
 import ExploreIcon from "@mui/icons-material/Explore";
 import TuneIcon from "@mui/icons-material/Tune";
+import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import RouteIcon from "@mui/icons-material/Route";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  Circle,
+} from "react-leaflet";
+import { Icon, type LatLngTuple } from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useLocation, type LocationCoordinates } from "../../hooks/useLocation";
 
 const formatValue = (
@@ -158,29 +171,38 @@ const LocationDisplay: React.FC<LocationDisplayProps> = ({
   );
 };
 
+// Fix Leaflet default markers
+delete (Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
+  ._getIconUrl;
+Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
 interface LocationMapProps {
   location: LocationCoordinates | null;
   history: LocationCoordinates[];
+  showTrail?: boolean;
+  showAccuracyCircle?: boolean;
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ location, history }) => {
-  const [mapUrl, setMapUrl] = useState<string>("");
+const LocationMap: React.FC<LocationMapProps> = ({
+  location,
+  history,
+  showTrail = true,
+  showAccuracyCircle = true,
+}) => {
+  const [mapCenter, setMapCenter] = useState<LatLngTuple>([51.505, -0.09]); // Default to London
+  const [zoom, setZoom] = useState(13);
 
   useEffect(() => {
     if (location) {
-      // Create a simple static map URL (using OpenStreetMap tiles)
-      // const zoom = 15;
-      // const width = 400;
-      // const height = 300;
-
-      // For demo purposes, we'll show a placeholder map
-      // In a real implementation, you'd integrate with Leaflet, Google Maps, etc.
-      const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${
-        location.longitude - 0.01
-      },${location.latitude - 0.01},${location.longitude + 0.01},${
-        location.latitude + 0.01
-      }&layer=mapnik&marker=${location.latitude},${location.longitude}`;
-      setMapUrl(osmUrl);
+      setMapCenter([location.latitude, location.longitude]);
+      setZoom(15);
     }
   }, [location]);
 
@@ -191,12 +213,12 @@ const LocationMap: React.FC<LocationMapProps> = ({ location, history }) => {
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
             <MapIcon color="primary" />
             <Typography variant="h6" sx={{ ml: 1 }}>
-              Location Map
+              Interactive Map
             </Typography>
           </Box>
           <Box
             sx={{
-              height: 300,
+              height: 400,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -205,7 +227,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ location, history }) => {
             }}
           >
             <Typography variant="body2" color="text.secondary">
-              Enable location tracking to see map
+              Enable location tracking to see interactive map
             </Typography>
           </Box>
         </CardContent>
@@ -213,24 +235,162 @@ const LocationMap: React.FC<LocationMapProps> = ({ location, history }) => {
     );
   }
 
+  // Create trail path from history
+  const trailPath: LatLngTuple[] = history.map((coord) => [
+    coord.latitude,
+    coord.longitude,
+  ]);
+
+  // Calculate distance for the last segment
+  const getLastSegmentDistance = () => {
+    if (history.length < 2) return null;
+    const lastTwo = history.slice(-2);
+    return calculateDistance(
+      lastTwo[0].latitude,
+      lastTwo[0].longitude,
+      lastTwo[1].latitude,
+      lastTwo[1].longitude
+    );
+  };
+
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <MapIcon color="primary" />
-          <Typography variant="h6" sx={{ ml: 1 }}>
-            Location Map
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <MapIcon color="primary" />
+            <Typography variant="h6" sx={{ ml: 1 }}>
+              Interactive Map
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Tooltip title="Center on current location">
+              <Fab
+                size="small"
+                color="primary"
+                onClick={() => {
+                  setMapCenter([location.latitude, location.longitude]);
+                  setZoom(16);
+                }}
+              >
+                <CenterFocusStrongIcon />
+              </Fab>
+            </Tooltip>
+          </Box>
         </Box>
-        <Box sx={{ height: 300, borderRadius: 1, overflow: "hidden" }}>
-          <iframe
-            src={mapUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            title="Location Map"
-          />
+
+        <Box
+          sx={{
+            height: 400,
+            borderRadius: 1,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <MapContainer
+            center={mapCenter}
+            zoom={zoom}
+            style={{ height: "100%", width: "100%" }}
+            zoomControl={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            {/* Current location marker */}
+            <Marker position={[location.latitude, location.longitude]}>
+              <Popup>
+                <div>
+                  <strong>Current Location</strong>
+                  <br />
+                  Lat: {location.latitude.toFixed(6)}
+                  <br />
+                  Lng: {location.longitude.toFixed(6)}
+                  <br />
+                  Accuracy: ±{location.accuracy?.toFixed(0)}m<br />
+                  {location.speed && `Speed: ${location.speed.toFixed(1)} m/s`}
+                  <br />
+                  Time: {new Date(location.timestamp).toLocaleTimeString()}
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Accuracy circle */}
+            {showAccuracyCircle && location.accuracy && (
+              <Circle
+                center={[location.latitude, location.longitude]}
+                radius={location.accuracy}
+                pathOptions={{
+                  color: "#2196F3",
+                  fillColor: "#2196F3",
+                  fillOpacity: 0.1,
+                  weight: 2,
+                }}
+              />
+            )}
+
+            {/* Trail polyline */}
+            {showTrail && trailPath.length > 1 && (
+              <Polyline
+                positions={trailPath}
+                pathOptions={{
+                  color: "#FF5722",
+                  weight: 3,
+                  opacity: 0.8,
+                }}
+              />
+            )}
+
+            {/* Historical markers for significant points */}
+            {history.slice(-10).map((coord, index) => {
+              if (index === history.length - 1) return null; // Skip current location
+
+              // Create custom icon safely
+              let customIcon;
+              try {
+                customIcon = new Icon({
+                  iconUrl:
+                    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+                  iconSize: [20, 32],
+                  iconAnchor: [10, 32],
+                  popupAnchor: [0, -32],
+                });
+              } catch {
+                // Fallback to default icon if custom icon creation fails
+                customIcon = undefined;
+              }
+
+              return (
+                <Marker
+                  key={index}
+                  position={[coord.latitude, coord.longitude]}
+                  {...(customIcon && { icon: customIcon })}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Point #{index + 1}</strong>
+                      <br />
+                      Lat: {coord.latitude.toFixed(6)}
+                      <br />
+                      Lng: {coord.longitude.toFixed(6)}
+                      <br />
+                      Time: {new Date(coord.timestamp).toLocaleTimeString()}
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
         </Box>
+
         <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Chip
             size="small"
@@ -253,10 +413,39 @@ const LocationMap: React.FC<LocationMapProps> = ({ location, history }) => {
               color="success"
             />
           )}
+          {trailPath.length > 1 && (
+            <Chip
+              size="small"
+              icon={<RouteIcon />}
+              label={`${getLastSegmentDistance()?.toFixed(0)}m last segment`}
+              color="info"
+            />
+          )}
         </Box>
       </CardContent>
     </Card>
   );
+};
+
+// Helper function to calculate distance between two points
+const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
 };
 
 interface LocationStatsProps {
@@ -378,6 +567,179 @@ const LocationStats: React.FC<LocationStatsProps> = ({
                 </Typography>
               </Box>
             </Box>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+interface GeofenceProps {
+  currentLocation: LocationCoordinates | null;
+}
+
+const GeofenceDemo: React.FC<GeofenceProps> = ({ currentLocation }) => {
+  const [geofences, setGeofences] = useState<
+    Array<{
+      id: string;
+      name: string;
+      center: { lat: number; lng: number };
+      radius: number;
+      isInside: boolean;
+    }>
+  >([]);
+  const [newFenceName, setNewFenceName] = useState("");
+  const [newFenceRadius, setNewFenceRadius] = useState(100);
+
+  // Check if current location is inside any geofences
+  useEffect(() => {
+    if (!currentLocation) return;
+
+    setGeofences((prev) =>
+      prev.map((fence) => {
+        const distance = calculateDistance(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          fence.center.lat,
+          fence.center.lng
+        );
+        return {
+          ...fence,
+          isInside: distance <= fence.radius,
+        };
+      })
+    );
+  }, [currentLocation]);
+
+  const addGeofence = () => {
+    if (!currentLocation || !newFenceName.trim()) return;
+
+    const newFence = {
+      id: Date.now().toString(),
+      name: newFenceName.trim(),
+      center: { lat: currentLocation.latitude, lng: currentLocation.longitude },
+      radius: newFenceRadius,
+      isInside: true, // We're creating it at current location
+    };
+
+    setGeofences((prev) => [...prev, newFence]);
+    setNewFenceName("");
+  };
+
+  const removeGeofence = (id: string) => {
+    setGeofences((prev) => prev.filter((fence) => fence.id !== id));
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          🚧 Geofencing Demo
+        </Typography>
+
+        {!currentLocation ? (
+          <Typography variant="body2" color="text.secondary">
+            Enable location tracking to use geofencing features
+          </Typography>
+        ) : (
+          <>
+            {/* Add new geofence */}
+            <Box
+              sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "background.default",
+                borderRadius: 1,
+              }}
+            >
+              <Typography variant="subtitle2" gutterBottom>
+                Create Geofence at Current Location
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  flexWrap: "wrap",
+                  alignItems: "end",
+                }}
+              >
+                <TextField
+                  size="small"
+                  label="Fence Name"
+                  value={newFenceName}
+                  onChange={(e) => setNewFenceName(e.target.value)}
+                  sx={{ minWidth: 150 }}
+                />
+                <TextField
+                  size="small"
+                  label="Radius (m)"
+                  type="number"
+                  value={newFenceRadius}
+                  onChange={(e) => setNewFenceRadius(Number(e.target.value))}
+                  sx={{ width: 100 }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={addGeofence}
+                  disabled={!newFenceName.trim()}
+                >
+                  Add Fence
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Active geofences */}
+            {geofences.length > 0 ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {geofences.map((fence) => (
+                  <Box
+                    key={fence.id}
+                    sx={{
+                      p: 2,
+                      border: 1,
+                      borderColor: fence.isInside ? "success.main" : "grey.300",
+                      borderRadius: 1,
+                      bgcolor: fence.isInside
+                        ? "success.light"
+                        : "background.paper",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle2">{fence.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Center: {fence.center.lat.toFixed(4)},{" "}
+                        {fence.center.lng.toFixed(4)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Radius: {fence.radius}m
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Chip
+                        label={fence.isInside ? "INSIDE" : "OUTSIDE"}
+                        color={fence.isInside ? "success" : "default"}
+                        size="small"
+                      />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => removeGeofence(fence.id)}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No geofences created. Add one using your current location.
+              </Typography>
+            )}
           </>
         )}
       </CardContent>
@@ -540,7 +902,6 @@ export const LocationDemo: React.FC = () => {
     startTracking,
     stopTracking,
     getCurrentPosition,
-    // requestPermission, // Not used directly in component
     clearHistory,
     clearError,
     formatCoordinates,
@@ -548,6 +909,8 @@ export const LocationDemo: React.FC = () => {
 
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTrail, setShowTrail] = useState(true);
+  const [showAccuracyCircle, setShowAccuracyCircle] = useState(true);
   const [trackingOptions, setTrackingOptions] = useState<PositionOptions>({
     enableHighAccuracy: true,
     timeout: 10000,
@@ -659,6 +1022,30 @@ export const LocationDemo: React.FC = () => {
             </Button>
           </Box>
 
+          {/* Map Display Options */}
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showTrail}
+                  onChange={(e) => setShowTrail(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Show Trail"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showAccuracyCircle}
+                  onChange={(e) => setShowAccuracyCircle(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Show Accuracy Circle"
+            />
+          </Box>
+
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Chip
               label={isSupported ? "Geolocation Supported" : "Not Supported"}
@@ -697,12 +1084,17 @@ export const LocationDemo: React.FC = () => {
             <LocationMap
               location={currentLocation}
               history={history.coordinates}
+              showTrail={showTrail}
+              showAccuracyCircle={showAccuracyCircle}
             />
           </Box>
         </Box>
 
         {/* Location Statistics */}
         <LocationStats history={history} currentLocation={currentLocation} />
+
+        {/* Geofencing Demo */}
+        <GeofenceDemo currentLocation={currentLocation} />
       </Box>
 
       {/* Implementation hints */}
@@ -717,10 +1109,14 @@ export const LocationDemo: React.FC = () => {
           <br />
           • Provides real-time location updates with watchPosition
           <br />
+          • Interactive Leaflet map with markers, trails, and accuracy circles
+          <br />
           • Calculates distances using Haversine formula
           <br />
           • Includes location history and statistics tracking
-          <br />• Integrates with OpenStreetMap for basic mapping display
+          <br />
+          • Geofencing demonstration with custom boundaries
+          <br />• Real-time trail visualization and location analytics
         </Typography>
       </Paper>
 

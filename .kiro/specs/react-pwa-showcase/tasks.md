@@ -211,6 +211,8 @@
 
 - [ ] 12.2 Add interactive map and tracking
 
+
+
   - Integrate Leaflet map component for location visualization
   - Implement real-time location tracking with position updates
   - Add distance calculation and geofencing demonstration
