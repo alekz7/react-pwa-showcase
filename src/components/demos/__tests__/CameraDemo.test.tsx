@@ -61,6 +61,86 @@ vi.mock("@mui/material", () => ({
       {label}
     </span>
   ),
+  Dialog: ({
+    children,
+    open,
+    ...props
+  }: MockComponentProps & { open?: boolean }) =>
+    open ? (
+      <div data-testid="dialog" {...props}>
+        {children}
+      </div>
+    ) : null,
+  DialogTitle: ({ children, ...props }: MockComponentProps) => (
+    <h2 data-testid="dialog-title" {...props}>
+      {children}
+    </h2>
+  ),
+  DialogContent: ({ children, ...props }: MockComponentProps) => (
+    <div data-testid="dialog-content" {...props}>
+      {children}
+    </div>
+  ),
+  FormControl: ({ children, ...props }: MockComponentProps) => (
+    <div data-testid="form-control" {...props}>
+      {children}
+    </div>
+  ),
+  InputLabel: ({ children, ...props }: MockComponentProps) => (
+    <label data-testid="input-label" {...props}>
+      {children}
+    </label>
+  ),
+  Select: ({ children, ...props }: MockComponentProps) => (
+    <select data-testid="select" {...props}>
+      {children}
+    </select>
+  ),
+  MenuItem: ({ children, ...props }: MockComponentProps) => (
+    <option data-testid="menu-item" {...props}>
+      {children}
+    </option>
+  ),
+  FormControlLabel: ({
+    control,
+    label,
+    ...props
+  }: MockComponentProps & { control?: React.ReactNode; label?: string }) => (
+    <label data-testid="form-control-label" {...props}>
+      {control} {label}
+    </label>
+  ),
+  Switch: ({
+    checked,
+    onChange,
+    ...props
+  }: MockComponentProps & {
+    checked?: boolean;
+    onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  }) => (
+    <input
+      type="checkbox"
+      data-testid="switch"
+      checked={checked}
+      onChange={onChange}
+      {...props}
+    />
+  ),
+  ImageList: ({ children, ...props }: MockComponentProps) => (
+    <div data-testid="image-list" {...props}>
+      {children}
+    </div>
+  ),
+  ImageListItem: ({ children, ...props }: MockComponentProps) => (
+    <div data-testid="image-list-item" {...props}>
+      {children}
+    </div>
+  ),
+  ImageListItemBar: ({ title, ...props }: { title?: string }) => (
+    <div data-testid="image-list-item-bar" {...props}>
+      {title}
+    </div>
+  ),
 }));
 
 // Mock MUI icons
