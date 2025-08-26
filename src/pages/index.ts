@@ -8,10 +8,10 @@ export { default as NotFound } from "./NotFound";
 
 // File System Demo
 export { default as FileSystemDemo } from "./FileSystemDemo";
-export const MotionSensorsDemo = () =>
-  React.createElement("div", null, "Motion Sensors Demo - Coming Soon");
-export const LocationDemo = () =>
-  React.createElement("div", null, "Location Demo - Coming Soon");
+// Motion Sensors Demo
+export { default as MotionSensorsDemo } from "./MotionSensorsDemo";
+// Location Demo
+export { default as LocationDemo } from "./LocationDemo";
 export const RealtimeDemo = () =>
   React.createElement("div", null, "Real-time Demo - Coming Soon");
 export const PWAFeaturesDemo = () =>

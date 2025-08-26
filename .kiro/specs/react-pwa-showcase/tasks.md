@@ -175,15 +175,21 @@
   - Write unit tests for file handling operations
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 11. Implement Motion Sensors Demo
-- [ ] 11.1 Create motion sensor interface
+- [x] 11. Implement Motion Sensors Demo
+
+
+- [x] 11.1 Create motion sensor interface
+
+
+
 
   - Build MotionSensorsDemo component with real-time data display
   - Implement motion sensor permission request and API access
   - Add data visualization using Chart.js or Recharts components
   - _Requirements: 5.1, 5.2_
 
-- [ ] 11.2 Add gesture detection and interactions
+- [x] 11.2 Add gesture detection and interactions
+
 
   - Implement shake gesture detection and device orientation tracking
   - Create motion-based interactions and visual feedback
@@ -191,8 +197,12 @@
   - Write integration tests for motion sensor features
   - _Requirements: 5.3, 5.4_
 
-- [ ] 12. Implement Location Demo
-- [ ] 12.1 Create location tracking interface
+- [-] 12. Implement Location Demo
+
+- [x] 12.1 Create location tracking interface
+
+
+
 
   - Build LocationDemo component with current position display
   - Implement location permission request and Geolocation API access
