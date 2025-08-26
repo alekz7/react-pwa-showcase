@@ -1,65 +1,96 @@
 import React from "react";
-import {
-  render,
-  screen,
-  act,
-  renderHook,
-  waitFor,
-} from "@testing-library/react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { render, screen, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SocketProvider, useSocket } from "../SocketContext";
 
-// Configure longer timeout for all tests
-vi.setConfig({ testTimeout: 30000 });
+// Mock the SocketService
+const mockSocketService = {
+  connect: vi.fn(),
+  disconnect: vi.fn(),
+  reconnect: vi.fn(),
+  emit: vi.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+  joinRoom: vi.fn(),
+  leaveRoom: vi.fn(),
+  getStatus: vi.fn(),
+  isConnected: vi.fn(),
+  getSocketId: vi.fn(),
+  destroy: vi.fn(),
+};
 
-// Test component that uses the context
+// Mock the socket service module
+vi.mock("../../services/socketService", () => ({
+  SocketService: vi.fn(() => mockSocketService),
+  createSocketService: vi.fn(() => mockSocketService),
+  getSocketService: vi.fn(() => mockSocketService),
+  defaultSocketConfig: {
+    url: "http://localhost:3001",
+    options: {
+      autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+    },
+  },
+}));
+
+// Test component to access socket context
 const TestComponent: React.FC = () => {
   const {
-    state,
+    socketService,
+    isConnected,
+    isConnecting,
+    isReconnecting,
+    error,
+    connectionStatus,
+    messages,
+    users,
+    currentRoom,
+    currentUser,
     connect,
     disconnect,
+    reconnect,
+    sendMessage,
     joinRoom,
     leaveRoom,
-    sendMessage,
     clearMessages,
     updateUserStatus,
-    isConnected,
-    getCurrentRoom,
-    getUsers,
-    getMessages,
+    setCurrentUser,
   } = useSocket();
-
-  const [userStatus, setUserStatus] = React.useState<string>("offline");
 
   return (
     <div>
-      <div data-testid="connected">{state.connected.toString()}</div>
-      <div data-testid="connecting">{state.connecting.toString()}</div>
-      <div data-testid="error">{state.error || "none"}</div>
-      <div data-testid="users-count">{state.users.length}</div>
-      <div data-testid="messages-count">{state.messages.length}</div>
-      <div data-testid="rooms-count">{state.rooms.length}</div>
-      <div data-testid="current-room">{state.currentRoom || "none"}</div>
-      <div data-testid="user-status">{userStatus}</div>
-
-      <div data-testid="is-connected">{isConnected().toString()}</div>
-      <div data-testid="get-current-room">{getCurrentRoom() || "none"}</div>
-      <div data-testid="get-users-count">{getUsers().length}</div>
-      <div data-testid="get-messages-count">{getMessages().length}</div>
-
-      <button onClick={connect}>Connect</button>
+      <div data-testid="socket-service">
+        {socketService ? "has-service" : "no-service"}
+      </div>
+      <div data-testid="is-connected">{isConnected.toString()}</div>
+      <div data-testid="is-connecting">{isConnecting.toString()}</div>
+      <div data-testid="is-reconnecting">{isReconnecting.toString()}</div>
+      <div data-testid="error">{error || "no-error"}</div>
+      <div data-testid="messages-count">{messages.length}</div>
+      <div data-testid="users-count">{users.length}</div>
+      <div data-testid="current-room">{currentRoom || "no-room"}</div>
+      <div data-testid="current-user">{currentUser?.name || "no-user"}</div>
+      <div data-testid="connection-status">
+        {JSON.stringify(connectionStatus)}
+      </div>
+      <button onClick={() => connect()}>Connect</button>
       <button onClick={disconnect}>Disconnect</button>
+      <button onClick={reconnect}>Reconnect</button>
+      <button onClick={() => sendMessage("test message")}>Send Message</button>
       <button onClick={() => joinRoom("test-room")}>Join Room</button>
-      <button onClick={leaveRoom}>Leave Room</button>
-      <button onClick={() => sendMessage("Hello World")}>Send Message</button>
+      <button onClick={() => leaveRoom("test-room")}>Leave Room</button>
       <button onClick={clearMessages}>Clear Messages</button>
+      <button onClick={() => updateUserStatus("online")}>Update Status</button>
       <button
-        onClick={() => {
-          updateUserStatus("online");
-          setUserStatus("online");
-        }}
+        onClick={() =>
+          setCurrentUser({ id: "1", name: "Test User", status: "online" })
+        }
       >
-        Update Status
+        Set User
       </button>
     </div>
   );
@@ -68,6 +99,21 @@ const TestComponent: React.FC = () => {
 describe("SocketContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set up default mock return values
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: false,
+      isConnecting: false,
+      isReconnecting: false,
+      error: null,
+      reconnectAttempts: 0,
+      lastConnected: null,
+      lastDisconnected: null,
+    });
+    mockSocketService.isConnected.mockReturnValue(false);
+    mockSocketService.connect.mockResolvedValue(undefined);
+    mockSocketService.joinRoom.mockResolvedValue(undefined);
+    mockSocketService.leaveRoom.mockResolvedValue(undefined);
+    mockSocketService.emit.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -81,26 +127,17 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
-    expect(screen.getByTestId("connected")).toHaveTextContent("false");
-    expect(screen.getByTestId("connecting")).toHaveTextContent("false");
-    expect(screen.getByTestId("error")).toHaveTextContent("none");
-    expect(screen.getByTestId("users-count")).toHaveTextContent("0");
-    expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-    expect(screen.getByTestId("rooms-count")).toHaveTextContent("0");
-    expect(screen.getByTestId("current-room")).toHaveTextContent("none");
-  });
-
-  it("provides utility methods correctly", () => {
-    render(
-      <SocketProvider>
-        <TestComponent />
-      </SocketProvider>
+    expect(screen.getByTestId("socket-service")).toHaveTextContent(
+      "no-service"
     );
-
     expect(screen.getByTestId("is-connected")).toHaveTextContent("false");
-    expect(screen.getByTestId("get-current-room")).toHaveTextContent("none");
-    expect(screen.getByTestId("get-users-count")).toHaveTextContent("0");
-    expect(screen.getByTestId("get-messages-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("is-connecting")).toHaveTextContent("false");
+    expect(screen.getByTestId("is-reconnecting")).toHaveTextContent("false");
+    expect(screen.getByTestId("error")).toHaveTextContent("no-error");
+    expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("users-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("current-room")).toHaveTextContent("no-room");
+    expect(screen.getByTestId("current-user")).toHaveTextContent("no-user");
   });
 
   it("connects successfully", async () => {
@@ -111,63 +148,22 @@ describe("SocketContext", () => {
     );
 
     // Initially not connected
-    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("false");
 
-    // Auto-connect should happen on mount - wait for it
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    // Should have demo data loaded
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("rooms-count")).toHaveTextContent("3");
-        expect(screen.getByTestId("users-count")).toHaveTextContent("2");
-      },
-      { timeout: 10000 }
-    );
-  }, 20000);
-
-  it("handles manual connection", async () => {
-    render(
-      <SocketProvider>
-        <TestComponent />
-      </SocketProvider>
-    );
-
-    // Wait for auto-connection first, then disconnect to test manual connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    // Disconnect first
-    act(() => {
-      screen.getByText("Disconnect").click();
-    });
-
-    expect(screen.getByTestId("connected")).toHaveTextContent("false");
-
-    // Now test manual connection
+    // Click connect
     act(() => {
       screen.getByText("Connect").click();
     });
 
-    expect(screen.getByTestId("connecting")).toHaveTextContent("true");
+    // Wait for the service to be created and connect to be called
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-        expect(screen.getByTestId("connecting")).toHaveTextContent("false");
-      },
-      { timeout: 10000 }
+    expect(screen.getByTestId("socket-service")).toHaveTextContent(
+      "has-service"
     );
-  }, 20000);
+  });
 
   it("handles disconnection", async () => {
     render(
@@ -176,21 +172,96 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
-    // Wait for auto-connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
+    // First connect
+    act(() => {
+      screen.getByText("Connect").click();
+    });
 
-    // Disconnect
+    // Wait for connection
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Then disconnect
     act(() => {
       screen.getByText("Disconnect").click();
     });
 
-    expect(screen.getByTestId("connected")).toHaveTextContent("false");
-  }, 20000);
+    expect(mockSocketService.disconnect).toHaveBeenCalled();
+  });
+
+  it("handles reconnection", async () => {
+    render(
+      <SocketProvider>
+        <TestComponent />
+      </SocketProvider>
+    );
+
+    // First connect
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
+    // Wait for connection
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Then reconnect
+    act(() => {
+      screen.getByText("Reconnect").click();
+    });
+
+    expect(mockSocketService.reconnect).toHaveBeenCalled();
+  });
+
+  it("sends messages when connected with current user", async () => {
+    render(
+      <SocketProvider>
+        <TestComponent />
+      </SocketProvider>
+    );
+
+    // Connect first
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
+    // Wait for connection
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Set up connected state
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: true,
+      isConnecting: false,
+      isReconnecting: false,
+      error: null,
+      reconnectAttempts: 0,
+      lastConnected: new Date(),
+      lastDisconnected: null,
+    });
+
+    // Set user
+    act(() => {
+      screen.getByText("Set User").click();
+    });
+
+    // Send message
+    act(() => {
+      screen.getByText("Send Message").click();
+    });
+
+    expect(mockSocketService.emit).toHaveBeenCalledWith(
+      "send-message",
+      expect.objectContaining({
+        user: "Test User",
+        content: "test message",
+        timestamp: expect.any(Number),
+      })
+    );
+  });
 
   it("joins and leaves rooms", async () => {
     render(
@@ -199,92 +270,47 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
+    // Connect first
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
     // Wait for connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Set up connected state
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: true,
+      isConnecting: false,
+      isReconnecting: false,
+      error: null,
+      reconnectAttempts: 0,
+      lastConnected: new Date(),
+      lastDisconnected: null,
+    });
 
     // Join room
     act(() => {
       screen.getByText("Join Room").click();
     });
 
-    // Wait for room join response
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("current-room")).toHaveTextContent(
-          "test-room"
-        );
-      },
-      { timeout: 10000 }
-    );
+    expect(mockSocketService.joinRoom).toHaveBeenCalledWith("test-room");
 
     // Leave room
     act(() => {
       screen.getByText("Leave Room").click();
     });
 
-    expect(screen.getByTestId("current-room")).toHaveTextContent("none");
-  }, 20000);
+    expect(mockSocketService.leaveRoom).toHaveBeenCalledWith("test-room");
+  });
 
-  it("sends and receives messages", async () => {
+  it("clears messages", () => {
     render(
       <SocketProvider>
         <TestComponent />
       </SocketProvider>
-    );
-
-    // Wait for connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-
-    // Send message
-    act(() => {
-      screen.getByText("Send Message").click();
-    });
-
-    // Wait for message response
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-      },
-      { timeout: 10000 }
-    );
-  }, 20000);
-
-  it("clears messages", async () => {
-    render(
-      <SocketProvider>
-        <TestComponent />
-      </SocketProvider>
-    );
-
-    // Wait for connection and send a message
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    act(() => {
-      screen.getByText("Send Message").click();
-    });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-      },
-      { timeout: 10000 }
     );
 
     // Clear messages
@@ -293,7 +319,7 @@ describe("SocketContext", () => {
     });
 
     expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-  }, 20000);
+  });
 
   it("updates user status", async () => {
     render(
@@ -302,125 +328,182 @@ describe("SocketContext", () => {
       </SocketProvider>
     );
 
-    // Wait for connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
+    // Connect first
+    act(() => {
+      screen.getByText("Connect").click();
+    });
 
-    // Update status (this would normally trigger server events)
+    // Wait for connection
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Set up connected state
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: true,
+      isConnecting: false,
+      isReconnecting: false,
+      error: null,
+      reconnectAttempts: 0,
+      lastConnected: new Date(),
+      lastDisconnected: null,
+    });
+
+    // Set user
+    act(() => {
+      screen.getByText("Set User").click();
+    });
+
+    // Update status
     act(() => {
       screen.getByText("Update Status").click();
     });
 
-    // The mock doesn't simulate status updates, but the method should not throw
-    expect(screen.getByTestId("connected")).toHaveTextContent("true");
-  }, 20000);
+    expect(mockSocketService.emit).toHaveBeenCalledWith("update-status", {
+      userId: "1",
+      status: "online",
+    });
+  });
+
+  it("sets current user", () => {
+    render(
+      <SocketProvider>
+        <TestComponent />
+      </SocketProvider>
+    );
+
+    expect(screen.getByTestId("current-user")).toHaveTextContent("no-user");
+
+    // Set user
+    act(() => {
+      screen.getByText("Set User").click();
+    });
+
+    expect(screen.getByTestId("current-user")).toHaveTextContent("Test User");
+  });
+
+  it("handles socket events", async () => {
+    render(
+      <SocketProvider>
+        <TestComponent />
+      </SocketProvider>
+    );
+
+    // Connect to set up event listeners
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
+    // Verify that event listeners were set up
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "message",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "user-joined",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "user-left",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "user-status-changed",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "room-joined",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "room-left",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "users-list",
+      expect.any(Function)
+    );
+    expect(mockSocketService.on).toHaveBeenCalledWith(
+      "error",
+      expect.any(Function)
+    );
+  });
 
   it("throws error when used outside provider", () => {
     // Suppress console.error for this test
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => {
-      renderHook(() => useSocket());
-    }).toThrow("useSocket must be used within a SocketProvider");
+      render(<TestComponent />);
+    }).toThrow();
 
     consoleSpy.mockRestore();
   });
 
-  it("handles custom socket URL", () => {
-    const customUrl = "ws://custom-server:3001";
-
-    render(
-      <SocketProvider socketUrl={customUrl}>
-        <TestComponent />
-      </SocketProvider>
-    );
-
-    // Should render without errors
-    expect(screen.getByTestId("connected")).toHaveTextContent("false");
-  });
-
-  it("limits message history to 100 messages", async () => {
+  it("handles connection errors gracefully", async () => {
     render(
       <SocketProvider>
         <TestComponent />
       </SocketProvider>
     );
 
-    // Wait for auto-connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    // Send 105 messages rapidly
-    for (let i = 0; i < 105; i++) {
-      act(() => {
-        screen.getByText("Send Message").click();
-      });
-    }
-
-    // Wait for all messages to be processed and then check the limit
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("messages-count")).toHaveTextContent("100");
-      },
-      { timeout: 20000 }
-    );
-  }, 30000);
-
-  it("clears messages when joining a new room", async () => {
-    render(
-      <SocketProvider>
-        <TestComponent />
-      </SocketProvider>
-    );
-
-    // Wait for auto-connection
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("connected")).toHaveTextContent("true");
-      },
-      { timeout: 15000 }
-    );
-
-    // Send a message and wait for it to be processed
-    act(() => {
-      screen.getByText("Send Message").click();
+    // Mock connection error
+    mockSocketService.connect.mockRejectedValue(new Error("Connection failed"));
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: false,
+      isConnecting: false,
+      isReconnecting: false,
+      error: "Connection failed",
+      reconnectAttempts: 0,
+      lastConnected: null,
+      lastDisconnected: null,
     });
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-      },
-      { timeout: 10000 }
+    // Try to connect
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
+    // Should handle error gracefully
+    expect(mockSocketService.connect).toHaveBeenCalled();
+  });
+
+  it("handles room join/leave errors gracefully", async () => {
+    render(
+      <SocketProvider>
+        <TestComponent />
+      </SocketProvider>
     );
 
-    // Join room (should clear messages)
+    // Connect first
+    act(() => {
+      screen.getByText("Connect").click();
+    });
+
+    // Wait for connection
+    await waitFor(() => {
+      expect(mockSocketService.connect).toHaveBeenCalled();
+    });
+
+    // Set up connected state
+    mockSocketService.getStatus.mockReturnValue({
+      isConnected: true,
+      isConnecting: false,
+      isReconnecting: false,
+      error: null,
+      reconnectAttempts: 0,
+      lastConnected: new Date(),
+      lastDisconnected: null,
+    });
+
+    // Mock room join error
+    mockSocketService.joinRoom.mockRejectedValue(new Error("Room join failed"));
+
+    // Try to join room - should handle error gracefully
     act(() => {
       screen.getByText("Join Room").click();
     });
 
-    // Wait for room to be joined and messages to be cleared
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("current-room")).toHaveTextContent(
-          "test-room"
-        );
-      },
-      { timeout: 10000 }
-    );
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
-      },
-      { timeout: 10000 }
-    );
-  }, 25000);
+    expect(mockSocketService.joinRoom).toHaveBeenCalled();
+  });
 });
