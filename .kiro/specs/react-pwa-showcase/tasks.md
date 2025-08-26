@@ -112,10 +112,13 @@
   - Write unit tests for permission handling and user flows
   - _Requirements: 2.1, 3.1, 4.1, 5.1, 6.1_
 
-- [ ] 8. Implement Camera Demo
+- [x] 8. Implement Camera Demo
 
 
-- [ ] 8.1 Create basic camera interface
+
+
+- [x] 8.1 Create basic camera interface
+
 
 
 
@@ -124,7 +127,9 @@
   - Add MUI IconButton controls for camera operations
   - _Requirements: 2.1, 2.2_
 
-- [ ] 8.2 Add photo capture and video recording
+- [x] 8.2 Add photo capture and video recording
+
+
 
   - Implement photo capture using canvas-based image processing
   - Add video recording functionality with MediaRecorder API
