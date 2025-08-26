@@ -12,7 +12,6 @@ export { default as FileSystemDemo } from "./FileSystemDemo";
 export { default as MotionSensorsDemo } from "./MotionSensorsDemo";
 // Location Demo
 export { default as LocationDemo } from "./LocationDemo";
-export const RealtimeDemo = () =>
-  React.createElement("div", null, "Real-time Demo - Coming Soon");
+export { default as RealtimeDemo } from "../components/demos/RealtimeDemo";
 export const PWAFeaturesDemo = () =>
   React.createElement("div", null, "PWA Features Demo - Coming Soon");

@@ -70,8 +70,12 @@ export class SocketService {
    * Connect to the Socket.IO server
    */
   async connect(): Promise<void> {
-    if (this.status.isConnected || this.status.isConnecting) {
-      return this.connectionPromise || Promise.resolve();
+    if (this.status.isConnected) {
+      return Promise.resolve();
+    }
+
+    if (this.status.isConnecting && this.connectionPromise) {
+      return this.connectionPromise;
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
@@ -462,6 +466,11 @@ export class SocketService {
     this.disconnect();
     this.eventListeners = {};
     this.clearTimers();
+
+    // Clear global reference if this is the default service
+    if (defaultSocketService === this) {
+      defaultSocketService = null;
+    }
   }
 }
 
@@ -474,6 +483,7 @@ let defaultSocketService: SocketService | null = null;
 export const createSocketService = (config: SocketConfig): SocketService => {
   if (defaultSocketService) {
     defaultSocketService.destroy();
+    defaultSocketService = null;
   }
   defaultSocketService = new SocketService(config);
   return defaultSocketService;

@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useMicrophone } from "../useMicrophone";
 
 // Mock MediaStream and MediaRecorder
@@ -92,6 +92,11 @@ describe("useMicrophone", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUserMedia.mockResolvedValue(mockStream);
+  });
+
+  afterEach(() => {
+    // Clean up any running timers and animation frames
+    vi.clearAllTimers();
   });
 
   it("initializes with correct default state", () => {

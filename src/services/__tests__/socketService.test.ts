@@ -18,23 +18,39 @@ vi.mock("socket.io-client", () => {
     id: "mock-socket-id",
   };
 
+  const mockIo = vi.fn(() => mockSocket);
+
   return {
-    io: vi.fn(() => mockSocket),
+    default: mockIo,
+    io: mockIo,
   };
 });
 
-// Get references to the mocked functions
-const mockSocket = {
-  connect: vi.fn(),
-  disconnect: vi.fn(),
-  emit: vi.fn(),
-  on: vi.fn(),
-  off: vi.fn(),
-  connected: false,
-  id: "mock-socket-id",
+// Import the mocked module to get references
+import { io as mockIo } from "socket.io-client";
+
+// Define the mock socket type
+interface MockSocket {
+  connect: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  emit: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+  connected: boolean;
+  id: string;
+}
+
+// Type for mock call arrays
+type MockCall = unknown[];
+
+// Helper function to find event handlers
+const findEventHandler = (eventName: string) => {
+  return mockSocket.on.mock.calls.find(
+    (call: MockCall) => call[0] === eventName
+  )?.[1] as (() => void) | undefined;
 };
 
-const mockIo = vi.fn(() => mockSocket);
+const mockSocket = (mockIo as unknown as () => MockSocket)();
 
 describe("SocketService", () => {
   let socketService: SocketService;
@@ -42,9 +58,11 @@ describe("SocketService", () => {
     url: string;
     options: {
       autoConnect: boolean;
+      forceNew: boolean;
       reconnection: boolean;
       reconnectionAttempts: number;
       reconnectionDelay: number;
+      reconnectionDelayMax: number;
       timeout: number;
     };
   };
@@ -62,9 +80,11 @@ describe("SocketService", () => {
       url: "http://localhost:3001",
       options: {
         autoConnect: false,
+        forceNew: false,
         reconnection: true,
         reconnectionAttempts: 3,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
         timeout: 5000,
       },
     };
@@ -105,9 +125,7 @@ describe("SocketService", () => {
       expect(socketService.getStatus().isConnecting).toBe(true);
 
       // Simulate successful connection
-      const connectHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === "connect"
-      )?.[1];
+      const connectHandler = findEventHandler("connect");
       if (connectHandler) {
         mockSocket.connected = true;
         connectHandler();
@@ -147,9 +165,24 @@ describe("SocketService", () => {
     });
 
     it("returns existing connection promise if already connecting", async () => {
+      // Start connection but don't let it complete yet
       const promise1 = socketService.connect();
+      expect(socketService.getStatus().isConnecting).toBe(true);
+
+      // Second call should return the same promise
       const promise2 = socketService.connect();
       expect(promise1).toBe(promise2);
+
+      // Now let the connection complete
+      const connectHandler = mockSocket.on.mock.calls.find(
+        (call) => call[0] === "connect"
+      )?.[1];
+      if (connectHandler) {
+        mockSocket.connected = true;
+        connectHandler();
+      }
+
+      await promise1;
     });
   });
 
@@ -225,9 +258,15 @@ describe("SocketService", () => {
     });
 
     it("emits event with acknowledgment", async () => {
-      mockSocket.emit.mockImplementation((_event, _data, callback) => {
-        setTimeout(() => callback({ success: true }), 100);
-      });
+      mockSocket.emit.mockImplementation(
+        (
+          _event: string,
+          _data: unknown,
+          callback: (response: unknown) => void
+        ) => {
+          setTimeout(() => callback({ success: true }), 100);
+        }
+      );
 
       const result = await socketService.emitWithAck("test-event", {
         data: "test",
@@ -330,11 +369,17 @@ describe("SocketService", () => {
     });
 
     it("joins room", async () => {
-      mockSocket.emit.mockImplementation((event, _data, callback) => {
-        if (event === "join-room") {
-          setTimeout(() => callback({ success: true }), 100);
+      mockSocket.emit.mockImplementation(
+        (
+          event: string,
+          _data: unknown,
+          callback: (response: unknown) => void
+        ) => {
+          if (event === "join-room") {
+            setTimeout(() => callback({ success: true }), 100);
+          }
         }
-      });
+      );
 
       await socketService.joinRoom("test-room");
       expect(mockSocket.emit).toHaveBeenCalledWith(
@@ -345,11 +390,17 @@ describe("SocketService", () => {
     });
 
     it("leaves room", async () => {
-      mockSocket.emit.mockImplementation((event, _data, callback) => {
-        if (event === "leave-room") {
-          setTimeout(() => callback({ success: true }), 100);
+      mockSocket.emit.mockImplementation(
+        (
+          event: string,
+          _data: unknown,
+          callback: (response: unknown) => void
+        ) => {
+          if (event === "leave-room") {
+            setTimeout(() => callback({ success: true }), 100);
+          }
         }
-      });
+      );
 
       await socketService.leaveRoom("test-room");
       expect(mockSocket.emit).toHaveBeenCalledWith(
@@ -499,6 +550,7 @@ describe("SocketService", () => {
       // Clear previous calls
       mockSocket.disconnect.mockClear();
       mockSocket.connect.mockClear();
+      mockSocket.on.mockClear();
 
       // Force reconnection
       const reconnectPromise = socketService.reconnect();
@@ -506,10 +558,15 @@ describe("SocketService", () => {
       // Fast-forward the delay
       vi.advanceTimersByTime(1100);
 
+      // Set up new connect handler for the reconnection
+      const newConnectHandler = mockSocket.on.mock.calls.find(
+        (call) => call[0] === "connect"
+      )?.[1];
+
       // Simulate connection
-      if (connectHandler) {
+      if (newConnectHandler) {
         mockSocket.connected = true;
-        connectHandler();
+        newConnectHandler();
       }
 
       await reconnectPromise;
@@ -569,6 +626,11 @@ describe("Socket Service Factory Functions", () => {
 
   describe("getSocketService", () => {
     it("returns null when no service created", () => {
+      // Clear any existing service first
+      const existingService = getSocketService();
+      if (existingService) {
+        existingService.destroy();
+      }
       expect(getSocketService()).toBe(null);
     });
 

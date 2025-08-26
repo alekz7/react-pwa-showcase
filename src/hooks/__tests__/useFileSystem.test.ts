@@ -73,6 +73,9 @@ describe("useFileSystem", () => {
     mockFileReader.onload = null;
     mockFileReader.onerror = null;
     mockFileReader.error = null;
+
+    // Ensure we have a proper DOM container
+    document.body.innerHTML = '<div id="root"></div>';
   });
 
   it("initializes with correct default state", () => {
