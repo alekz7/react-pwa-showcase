@@ -29,13 +29,15 @@ vi.mock("leaflet", () => {
     options: {},
   }));
 
-  // Type assertion to allow adding Default property
-  (MockIcon as unknown).Default = {
-    prototype: {
-      _getIconUrl: vi.fn(),
+  // Add Default property to MockIcon
+  Object.assign(MockIcon, {
+    Default: {
+      prototype: {
+        _getIconUrl: vi.fn(),
+      },
+      mergeOptions: vi.fn(),
     },
-    mergeOptions: vi.fn(),
-  };
+  });
 
   return {
     Icon: MockIcon,
