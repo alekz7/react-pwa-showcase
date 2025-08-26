@@ -113,7 +113,11 @@
   - _Requirements: 2.1, 3.1, 4.1, 5.1, 6.1_
 
 - [ ] 8. Implement Camera Demo
+
+
 - [ ] 8.1 Create basic camera interface
+
+
 
   - Build CameraDemo component with live camera preview using MediaStream API
   - Implement camera permission request and error handling
