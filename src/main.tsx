@@ -23,7 +23,7 @@ createRoot(document.getElementById("root")!).render(
 performanceReporter.markEnd("app-initialization");
 
 // Report performance metrics in development
-if (process.env.NODE_ENV === "development") {
+if (import.meta.env.DEV) {
   setTimeout(() => {
     performanceReporter.report();
   }, 2000);

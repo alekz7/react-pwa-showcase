@@ -162,7 +162,7 @@ export class PerformanceReporter {
   report(): void {
     const metrics = this.getMetrics();
 
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.table(metrics);
     } else {
       // In production, send to analytics service

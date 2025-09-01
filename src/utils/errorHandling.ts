@@ -357,7 +357,7 @@ export function getGracefulDegradation(feature: string): {
  * Logs errors with appropriate detail level based on environment
  */
 export function logError(error: AppError | Error, context?: string): void {
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = import.meta.env.DEV;
 
   if (isDevelopment) {
     console.group(`🚨 Error${context ? ` in ${context}` : ""}`);

@@ -78,7 +78,7 @@ export const usePerformanceMonitor = (): UsePerformanceMonitorReturn => {
     const handleLoad = () => {
       setTimeout(() => {
         refreshMetrics();
-        if (process.env.NODE_ENV === "development") {
+        if (import.meta.env.DEV) {
           logMetrics();
         }
       }, 1000);

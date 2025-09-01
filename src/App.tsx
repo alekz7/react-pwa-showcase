@@ -12,7 +12,7 @@ import DemoErrorBoundary from "./components/DemoErrorBoundary";
 import LoadingFallback from "./components/LoadingFallback";
 import AccessibilityNavigation from "./components/AccessibilityNavigation";
 import PerformanceMetrics from "./components/PerformanceMetrics";
-import { usePerformanceOptimization } from "./hooks/usePerformanceOptimization";
+import PerformanceInitializer from "./components/PerformanceInitializer";
 
 // Lazy load page components for better performance
 const Home = lazy(() => import("./pages/Home"));
@@ -30,9 +30,6 @@ const PWAFeaturesDemo = lazy(
 );
 
 function App() {
-  // Initialize performance optimizations
-  usePerformanceOptimization();
-
   return (
     <ErrorBoundary>
       <AppProvider>
@@ -40,6 +37,9 @@ function App() {
           <SocketProvider>
             <ThemeProvider>
               <Router basename="/react-pwa-showcase">
+                {/* Initialize performance optimizations within Router context */}
+                <PerformanceInitializer />
+
                 <Box
                   sx={{
                     minHeight: "100vh",

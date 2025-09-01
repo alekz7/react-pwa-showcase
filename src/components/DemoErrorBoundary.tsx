@@ -119,7 +119,7 @@ class DemoErrorBoundary extends Component<Props, State> {
             </Box>
           </Box>
 
-          {process.env.NODE_ENV === "development" && this.state.errorInfo && (
+          {import.meta.env.DEV && this.state.errorInfo && (
             <>
               <Box display="flex" alignItems="center" mb={1}>
                 <BugIcon sx={{ mr: 1, fontSize: 16 }} color="action" />

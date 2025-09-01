@@ -99,7 +99,7 @@ export function usePerformanceOptimization() {
   const reportPerformance = useCallback(() => {
     const metrics = getMetrics();
 
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.group("Performance Report");
       console.table(metrics.performanceMonitor);
       console.table(metrics.customMetrics);

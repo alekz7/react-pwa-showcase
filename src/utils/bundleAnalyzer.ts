@@ -30,7 +30,7 @@ class BundleAnalyzer {
       this.chunkSizes.set(chunkName, size);
     }
 
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.log(
         `📦 Chunk loaded: ${chunkName}${size ? ` (${(size / 1024).toFixed(2)}KB)` : ""}`
       );
@@ -43,7 +43,7 @@ class BundleAnalyzer {
   public trackModuleLoad(moduleName: string): void {
     this.loadedModules.add(moduleName);
 
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.log(`📋 Module loaded: ${moduleName}`);
     }
   }

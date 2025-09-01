@@ -58,7 +58,7 @@ class ErrorBoundary extends Component<Props, State> {
     });
 
     // Log error to console in development
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.error("ErrorBoundary caught an error:", error, errorInfo);
     }
 
@@ -149,45 +149,44 @@ class ErrorBoundary extends Component<Props, State> {
                 </Typography>
               </Box>
 
-              {process.env.NODE_ENV === "development" &&
-                this.state.errorInfo && (
-                  <>
-                    <Box display="flex" alignItems="center" mb={1}>
-                      <Typography variant="body2" color="text.secondary">
-                        Developer Details
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={this.toggleDetails}
-                        sx={{ ml: 1 }}
-                      >
-                        {this.state.showDetails ? (
-                          <ExpandLessIcon />
-                        ) : (
-                          <ExpandMoreIcon />
-                        )}
-                      </IconButton>
-                    </Box>
+              {import.meta.env.DEV && this.state.errorInfo && (
+                <>
+                  <Box display="flex" alignItems="center" mb={1}>
+                    <Typography variant="body2" color="text.secondary">
+                      Developer Details
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={this.toggleDetails}
+                      sx={{ ml: 1 }}
+                    >
+                      {this.state.showDetails ? (
+                        <ExpandLessIcon />
+                      ) : (
+                        <ExpandMoreIcon />
+                      )}
+                    </IconButton>
+                  </Box>
 
-                    <Collapse in={this.state.showDetails}>
-                      <Alert severity="info" sx={{ mb: 2 }}>
-                        <Typography
-                          variant="body2"
-                          component="pre"
-                          sx={{
-                            whiteSpace: "pre-wrap",
-                            fontSize: "0.75rem",
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          {this.state.error?.stack}
-                          {"\n\nComponent Stack:"}
-                          {this.state.errorInfo.componentStack}
-                        </Typography>
-                      </Alert>
-                    </Collapse>
-                  </>
-                )}
+                  <Collapse in={this.state.showDetails}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography
+                        variant="body2"
+                        component="pre"
+                        sx={{
+                          whiteSpace: "pre-wrap",
+                          fontSize: "0.75rem",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {this.state.error?.stack}
+                        {"\n\nComponent Stack:"}
+                        {this.state.errorInfo.componentStack}
+                      </Typography>
+                    </Alert>
+                  </Collapse>
+                </>
+              )}
             </CardContent>
 
             <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 2 }}>
