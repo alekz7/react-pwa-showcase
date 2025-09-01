@@ -188,7 +188,7 @@ class AccessibilityService {
       backgroundColor !== "rgba(0, 0, 0, 0)"
     ) {
       // This is a simplified check - in production, you'd use a proper contrast ratio calculator
-      const contrast = this.calculateContrastRatio(color, backgroundColor);
+      const contrast = this.calculateContrastRatio();
       if (contrast < 4.5) {
         console.warn("Accessibility: Low color contrast detected", element, {
           contrast,

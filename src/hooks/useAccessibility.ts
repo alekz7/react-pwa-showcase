@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  getAccessibilityService,
+import { getAccessibilityService } from "../services/accessibilityService";
+import type {
   AccessibilityFeatures,
   AccessibilityAudit,
 } from "../services/accessibilityService";

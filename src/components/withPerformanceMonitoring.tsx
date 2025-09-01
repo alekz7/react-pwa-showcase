@@ -1,4 +1,5 @@
-import React, { ComponentType, useEffect } from "react";
+import React, { useEffect } from "react";
+import type { ComponentType } from "react";
 import { measureComponentRender } from "../utils/performanceMonitor";
 
 interface WithPerformanceMonitoringOptions {

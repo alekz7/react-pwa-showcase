@@ -1,13 +1,13 @@
 import { useState, useCallback } from "react";
 import { useAppContext } from "../context";
 import {
-  AppError,
   ErrorCode,
   createAppError,
   handlePermissionError,
   handleApiError,
   logError,
 } from "../utils/errorHandling";
+import type { AppError } from "../utils/errorHandling";
 
 interface UseErrorHandlerReturn {
   error: AppError | null;

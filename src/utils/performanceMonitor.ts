@@ -60,16 +60,13 @@ class PerformanceMonitor {
       // First Input Delay
       const fidObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
-        entries.forEach(
-          (
-            entry: PerformanceEntry & {
-              processingStart: number;
-              startTime: number;
-            }
-          ) => {
-            this.metrics.fid = entry.processingStart - entry.startTime;
-          }
-        );
+        entries.forEach((entry) => {
+          const fidEntry = entry as PerformanceEntry & {
+            processingStart: number;
+            startTime: number;
+          };
+          this.metrics.fid = fidEntry.processingStart - fidEntry.startTime;
+        });
       });
       fidObserver.observe({ entryTypes: ["first-input"] });
       this.observers.push(fidObserver);
@@ -78,15 +75,15 @@ class PerformanceMonitor {
       let clsValue = 0;
       const clsObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
-        entries.forEach(
-          (
-            entry: PerformanceEntry & { value: number; hadRecentInput: boolean }
-          ) => {
-            if (!entry.hadRecentInput) {
-              clsValue += entry.value;
-            }
+        entries.forEach((entry) => {
+          const clsEntry = entry as PerformanceEntry & {
+            value: number;
+            hadRecentInput: boolean;
+          };
+          if (!clsEntry.hadRecentInput) {
+            clsValue += clsEntry.value;
           }
-        );
+        });
         this.metrics.cls = clsValue;
       });
       clsObserver.observe({ entryTypes: ["layout-shift"] });

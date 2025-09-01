@@ -1,8 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
-import {
-  getPerformanceMonitor,
-  PerformanceMetrics,
-} from "../utils/performanceMonitor";
+import { getPerformanceMonitor } from "../utils/performanceMonitor";
+import type { PerformanceMetrics } from "../utils/performanceMonitor";
 
 export interface UsePerformanceMonitorReturn {
   metrics: PerformanceMetrics;

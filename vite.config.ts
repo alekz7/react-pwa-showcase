@@ -176,6 +176,35 @@ export default defineConfig({
     // Optimize build performance
     chunkSizeWarningLimit: 1000, // Warn for chunks larger than 1MB
     reportCompressedSize: false, // Disable gzip size reporting for faster builds
+
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+
+    // Optimize dependencies
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
   },
   assetsInclude: ["**/*.svg"],
+
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "@mui/material",
+      "@mui/icons-material",
+      "@emotion/react",
+      "@emotion/styled",
+    ],
+    exclude: ["@vite/client", "@vite/env"],
+  },
+
+  // Performance optimizations
+  esbuild: {
+    // Remove console logs in production
+    drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
+  },
 });

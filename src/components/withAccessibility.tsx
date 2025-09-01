@@ -1,4 +1,5 @@
-import React, { ComponentType, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import type { ComponentType } from "react";
 import { getFocusManager } from "../utils/focusManagement";
 import { useAccessibility } from "../hooks/useAccessibility";
 

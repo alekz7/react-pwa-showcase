@@ -11,6 +11,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DemoErrorBoundary from "./components/DemoErrorBoundary";
 import LoadingFallback from "./components/LoadingFallback";
 import AccessibilityNavigation from "./components/AccessibilityNavigation";
+import PerformanceMetrics from "./components/PerformanceMetrics";
+import { usePerformanceOptimization } from "./hooks/usePerformanceOptimization";
 
 // Lazy load page components for better performance
 const Home = lazy(() => import("./pages/Home"));
@@ -28,6 +30,9 @@ const PWAFeaturesDemo = lazy(
 );
 
 function App() {
+  // Initialize performance optimizations
+  usePerformanceOptimization();
+
   return (
     <ErrorBoundary>
       <AppProvider>
@@ -166,6 +171,9 @@ function App() {
                   <PWAInstallPrompt />
                   <ServiceWorkerStatus />
                   <OfflineIndicator showPersistent />
+
+                  {/* Performance Metrics (Development Only) */}
+                  <PerformanceMetrics />
                 </Box>
               </Router>
             </ThemeProvider>
