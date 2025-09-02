@@ -28,6 +28,10 @@ const RealtimeDemo = lazy(() => import("./components/demos/RealtimeDemo"));
 const PWAFeaturesDemo = lazy(
   () => import("./components/demos/PWAFeaturesDemo")
 );
+const TestingPage = lazy(() => import("./pages/TestingPage"));
+const CrossDeviceTestingPage = lazy(
+  () => import("./pages/CrossDeviceTestingPage")
+);
 
 function App() {
   return (
@@ -160,6 +164,30 @@ function App() {
                                 <PWAFeaturesDemo />
                               </Suspense>
                             </DemoErrorBoundary>
+                          }
+                        />
+                        <Route
+                          path="/testing"
+                          element={
+                            <Suspense
+                              fallback={
+                                <LoadingFallback demoName="Device Testing" />
+                              }
+                            >
+                              <TestingPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/cross-device-testing"
+                          element={
+                            <Suspense
+                              fallback={
+                                <LoadingFallback demoName="Cross-Device Testing" />
+                              }
+                            >
+                              <CrossDeviceTestingPage />
+                            </Suspense>
                           }
                         />
                         <Route path="*" element={<NotFound />} />

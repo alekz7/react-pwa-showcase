@@ -193,8 +193,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
             </Box>
 
             {/* Core Web Vitals */}
-            <Grid container spacing={2} mb={3}>
-              <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={4}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography variant="h6" color="primary">
@@ -227,7 +227,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
                 </Card>
               </Grid>
 
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid item xs={12} sm={4}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography variant="h6" color="primary">
@@ -260,7 +260,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
                 </Card>
               </Grid>
 
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid item xs={12} sm={4}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography variant="h6" color="primary">
@@ -295,8 +295,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
             </Grid>
 
             {/* Additional Metrics */}
-            <Grid container spacing={2} mb={3}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography
@@ -338,7 +338,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
                 </Card>
               </Grid>
 
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid item xs={12} sm={6}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography

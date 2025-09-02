@@ -21,6 +21,7 @@ import {
   Wifi,
   InstallMobile,
   Menu as MenuIcon,
+  BugReport,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -39,6 +40,7 @@ const navigationItems: NavigationItem[] = [
   { label: "Location", path: "/location", icon: <LocationOn /> },
   { label: "Real-time", path: "/realtime", icon: <Wifi /> },
   { label: "PWA", path: "/pwa", icon: <InstallMobile /> },
+  { label: "Testing", path: "/testing", icon: <BugReport /> },
 ];
 
 export const Header: React.FC = () => {
