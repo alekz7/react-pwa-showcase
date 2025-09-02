@@ -7,6 +7,9 @@ import {
   performanceReporter,
 } from "./utils/performanceOptimizations";
 
+// Initialize error monitoring
+import "./utils/errorMonitoring";
+
 // Initialize performance optimizations
 initializePerformanceOptimizations();
 

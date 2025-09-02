@@ -50,6 +50,58 @@ npm run dev
 
 4. Open [http://localhost:5173](http://localhost:5173) in your browser
 
+## Production Deployment
+
+### Build for Production
+
+```bash
+# Install dependencies
+npm install
+
+# Run quality checks
+npm run lint
+npm run format:check
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+### Deploy to GitHub Pages
+
+1. **Automatic Deployment**: Push to the `main` branch triggers automatic deployment via GitHub Actions
+
+2. **Manual Deployment**: 
+   ```bash
+   npm run build
+   # Commit and push the changes
+   ```
+
+3. **Verify Deployment**: Check the [Production Checklist](PRODUCTION_CHECKLIST.md) for post-deployment verification steps
+
+### Performance Optimization
+
+The application includes several production optimizations:
+
+- **Code Splitting**: Automatic route-based and manual chunk splitting
+- **Caching**: Comprehensive service worker caching strategy
+- **Error Monitoring**: Production-ready error tracking and reporting
+- **Performance Monitoring**: Core Web Vitals and custom metrics tracking
+- **Bundle Analysis**: Use `npm run build:analyze` to analyze bundle size
+
+### Environment Configuration
+
+Create a `.env` file for environment-specific settings:
+
+```env
+VITE_APP_VERSION=1.0.3
+VITE_API_BASE_URL=https://your-api.com
+```
+
+4. Open [http://localhost:5173](http://localhost:5173) in your browser
+
 ### Available Scripts
 
 - `npm run dev` - Start development server
